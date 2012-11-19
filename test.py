@@ -80,19 +80,19 @@ class Board(pyglet.window.Window):
         self.posY += self.deltaY
     
     def on_resize(self, width, height):
-        glViewport(0,0,width,height)
+        glViewport(0,0,self.width,self.height)
         glMatrixMode(GL_PROJECTION)
+        self.initView()
+        return pyglet.event.EVENT_HANDLED
+
+    def initView(self):
         glLoadIdentity()
         gluPerspective(
-            90.0,                            # Field Of View
-            float(width)/float(height),  # aspect ratio
-            1.0,                             # z near
-            1000.0)                           # z far
-        # INITIALIZE THE MODELVIEW MATRIX FOR THE TRACKBALL CAMERA
-        print "update"
+            90.0,                                   # Field Of View
+            float(self.width)/float(self.height),   # aspect ratio
+            1.0,                                    # z near
+            1000.0)                                 # z far
         gluLookAt(*(self.eye + self.focus + self.up))
-        glMatrixMode(GL_MODELVIEW)
-        return pyglet.event.EVENT_HANDLED
 
     def on_key_press(self, symbol, modifiers):
         glLoadIdentity()
@@ -131,8 +131,7 @@ class Board(pyglet.window.Window):
             self.deltaX = 0.0
 
         print(self.eye + self.focus + self.up)
-        gluLookAt(*(self.eye + self.focus + self.up))
-        glMatrixMode(GL_MODELVIEW)
+        self.initView()
         return pyglet.event.EVENT_HANDLED
     
 win   = Board()
