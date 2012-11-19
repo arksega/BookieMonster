@@ -1,130 +1,129 @@
 import pyglet
 from pyglet.gl import *
-key = pyglet.window.key
+from pyglet.window import key
 
-win   = pyglet.window.Window(resizable=True)
+class Board(pyglet.window.Window):
 
-eye   = [0.0, -10.0, 10.0]
-focus = [0.0, 0.0, 0.0]
-up    = [0.0, 1.0, 0.0]
-currentParameter = eye
-unidad = 1.0
-posX = 0.0
-posY = 0.0
-posZ = 0.0
+    def __init__(self):
+        pyglet.window.Window.__init__(self, resizable=True)
+        self.eye   = [0.0, -10.0, 10.0]
+        self.focus = [0.0, 0.0, 0.0]
+        self.up    = [0.0, 1.0, 0.0]
+        self.currentParameter = self.eye
+        self.unidad = 1.0
+        self.posX = 0.0
+        self.posY = 0.0
+        self.posZ = 0.0
+        #One-time GL setup
+        glClearColor(1, 1, 1, 1)
+        glColor3f(1, 0, 0)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_CULL_FACE)
 
-@win.event
-def on_draw():
-    
-    # Clear buffers
-    glClear(GL_COLOR_BUFFER_BIT  | GL_DEPTH_BUFFER_BIT)
-    # Draw Grid
-    glBegin(GL_LINES)
-    glColor3f(0.0, 0.0, 0.0)
-    for i in range(10):
-        glVertex3f(i*10.0,-100., 0.)
-        glVertex3f(i*10.0, 100., 0.)
-        
-        glVertex3f(-i*10.0,-100., 0.)
-        glVertex3f(-i*10.0, 100., 0.)
+        # Uncomment this line for a wireframe view
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
-        glVertex3f(-100., i*10.0, 0.)
-        glVertex3f( 100., i*10.0, 0.)
+    def on_draw(self):
 
-        glVertex3f(-100.,-i*10.0, 0.)
-        glVertex3f( 100.,-i*10.0, 0.)
-    glEnd()
+        # Clear buffers
+        glClear(GL_COLOR_BUFFER_BIT  | GL_DEPTH_BUFFER_BIT)
+        # Draw Grid
+        glBegin(GL_LINES)
+        glColor3f(0.0, 0.0, 0.0)
+        for i in range(10):
+            glVertex3f(i*10.0,-100., 0.)
+            glVertex3f(i*10.0, 100., 0.)
 
-    # Draw axes
-    batch = pyglet.graphics.Batch()
-    vertex_list = batch.add(6, GL_LINES, None,        
-        ('v3f/stream', ( 0,0,0,  100,0,0,
-                         0,0,0,  0,100,0,
-                         0,0,0,  0,0,100)
-        ),
-        ('c4B/stream', ( 255,0,0,255, 255,0,0,255,
-                         0,255,0,255, 0,255,0,255,
-                         0,0,255,255, 0,0,255,255)
+            glVertex3f(-i*10.0,-100., 0.)
+            glVertex3f(-i*10.0, 100., 0.)
+
+            glVertex3f(-100., i*10.0, 0.)
+            glVertex3f( 100., i*10.0, 0.)
+
+            glVertex3f(-100.,-i*10.0, 0.)
+            glVertex3f( 100.,-i*10.0, 0.)
+        glEnd()
+
+        # Draw axes
+        batch = pyglet.graphics.Batch()
+        vertex_list = batch.add(6, GL_LINES, None,
+            ('v3f/stream', ( 0,0,0,  100,0,0,
+                            0,0,0,  0,100,0,
+                            0,0,0,  0,0,100)
+            ),
+            ('c4B/stream', ( 255,0,0,255, 255,0,0,255,
+                            0,255,0,255, 0,255,0,255,
+                            0,0,255,255, 0,0,255,255)
+            )
         )
-    )
-    batch.draw()
+        batch.draw()
+
+        #batch = pyglet.graphics.Batch()
+        self.drawSphere()
+
+    def drawSphere(self):
+        # Draw sphere
+        glColor3f(0.0, 0.0, 0.0)
+        q = gluNewQuadric()
+        #gluQuadricDrawStyle(q,GLU_LINE)
+        gluQuadricDrawStyle(q,GLU_FILL)
+        glPushMatrix()
+        glTranslatef(self.posX, self.posY, 0.0)
+        gluSphere(q,5.0,20,20)
+        glPopMatrix()
     
-    #batch = pyglet.graphics.Batch()
-    drawSphere()
+    def on_resize(self, width, height):
+        glViewport(0,0,width,height)
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+        gluPerspective(
+            90.0,                            # Field Of View
+            float(width)/float(height),  # aspect ratio
+            1.0,                             # z near
+            1000.0)                           # z far
+        # INITIALIZE THE MODELVIEW MATRIX FOR THE TRACKBALL CAMERA
+        print "update"
+        gluLookAt(*(self.eye + self.focus + self.up))
+        glMatrixMode(GL_MODELVIEW)
+        return pyglet.event.EVENT_HANDLED
 
-def drawSphere():
-    # Draw sphere
-    glColor3f(0.0, 0.0, 0.0)
-    q = gluNewQuadric()
-    #gluQuadricDrawStyle(q,GLU_LINE)
-    gluQuadricDrawStyle(q,GLU_FILL)
-    glPushMatrix()
-    glTranslatef(posX, posY, 0.0)
-    gluSphere(q,5.0,20,20)
-    glPopMatrix()
+    def on_key_press(self, symbol, modifiers):
+        glLoadIdentity()
+        if symbol == key.A:
+            self.currentParameter = self.eye
+            self.unidad = 1.0
+        elif symbol == key.B:
+            self.currentParameter = self.focus
+            self.unidad = 1.0
+        elif symbol == key.C:
+            self.unidad = 0.1
+            self.currentParameter = self.up
+        elif symbol == key.NUM_7:
+            self.currentParameter[0] = round(self.currentParameter[0] + self.unidad,1)
+        elif symbol == key.NUM_8:
+            self.currentParameter[1] = round(self.currentParameter[1] + self.unidad,1)
+        elif symbol == key.NUM_9:
+            self.currentParameter[2] = round(self.currentParameter[2] + self.unidad,1)
+        elif symbol == key.NUM_1:
+            self.currentParameter[0] = round(self.currentParameter[0] - self.unidad,1)
+        elif symbol == key.NUM_2:
+            self.currentParameter[1] = round(self.currentParameter[1] - self.unidad,1)
+        elif symbol == key.NUM_3:
+            self.currentParameter[2] = round(self.currentParameter[2] - self.unidad,1)
+        elif symbol == key.RIGHT:
+            self.posX += 1.0
+        elif symbol == key.LEFT:
+            self.posX -= 1.0
+        elif symbol == key.UP:
+            self.posY += 1.0
+        elif symbol == key.DOWN:
+            self.posY -= 1.0
+
+        print(self.eye + self.focus + self.up)
+        gluLookAt(*(self.eye + self.focus + self.up))
+        glMatrixMode(GL_MODELVIEW)
+        return pyglet.event.EVENT_HANDLED
     
-@win.event
-def on_resize(width, height):
-    glViewport(0,0,width,height)
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluPerspective( 
-        90.0,                            # Field Of View
-        float(width)/float(height),  # aspect ratio
-        1.0,                             # z near
-        1000.0)                           # z far
-    # INITIALIZE THE MODELVIEW MATRIX FOR THE TRACKBALL CAMERA
-    print "update"
-    gluLookAt(*(eye + focus + up))
-    glMatrixMode(GL_MODELVIEW)
-    return pyglet.event.EVENT_HANDLED
-
-@win.event
-def on_key_press(symbol, modifiers):
-    glLoadIdentity()
-    global currentParameter, unidad , posX, posY, posZ
-    if symbol == key.A:
-        currentParameter = eye
-        unidad = 1.0
-    elif symbol == key.B:
-        currentParameter = focus
-        unidad = 1.0
-    elif symbol == key.C:
-        unidad = 0.1
-        currentParameter = up
-    elif symbol == key.NUM_7:
-        currentParameter[0] = round(currentParameter[0] + unidad,1)
-    elif symbol == key.NUM_8:
-        currentParameter[1] = round(currentParameter[1] + unidad,1)
-    elif symbol == key.NUM_9:
-        currentParameter[2] = round(currentParameter[2] + unidad,1)
-    elif symbol == key.NUM_1:
-        currentParameter[0] = round(currentParameter[0] - unidad,1)
-    elif symbol == key.NUM_2:
-        currentParameter[1] = round(currentParameter[1] - unidad,1)
-    elif symbol == key.NUM_3:
-        currentParameter[2] = round(currentParameter[2] - unidad,1)
-    elif symbol == key.RIGHT:
-        posX += 1.0
-    elif symbol == key.LEFT:
-        posX -= 1.0
-    elif symbol == key.UP:
-        posY += 1.0
-    elif symbol == key.DOWN:
-        posY -= 1.0
-
-    print(eye + focus + up)
-    gluLookAt(*(eye + focus + up))
-    glMatrixMode(GL_MODELVIEW)
-    return pyglet.event.EVENT_HANDLED
-    
-#One-time GL setup
-glClearColor(1, 1, 1, 1)
-glColor3f(1, 0, 0)
-glEnable(GL_DEPTH_TEST)
-glEnable(GL_CULL_FACE)
-
-# Uncomment this line for a wireframe view
-glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+win   = Board()
 
 pyglet.app.run()
