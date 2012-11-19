@@ -9,6 +9,9 @@ focus = [0.0, 0.0, 0.0]
 up    = [0.0, 1.0, 0.0]
 currentParameter = eye
 unidad = 1.0
+posX = 0.0
+posY = 0.0
+posZ = 0.0
 
 @win.event
 def on_draw():
@@ -47,14 +50,16 @@ def on_draw():
     batch.draw()
     
     #batch = pyglet.graphics.Batch()
+    drawSphere()
 
+def drawSphere():
     # Draw sphere
     glColor3f(0.0, 0.0, 0.0)
     q = gluNewQuadric()
     #gluQuadricDrawStyle(q,GLU_LINE)
     gluQuadricDrawStyle(q,GLU_FILL)
     glPushMatrix()
-    glTranslatef(0.0, 0.0, 0.0)
+    glTranslatef(posX, posY, 0.0)
     gluSphere(q,5.0,20,20)
     glPopMatrix()
     
@@ -76,7 +81,8 @@ def on_resize(width, height):
 
 @win.event
 def on_key_press(symbol, modifiers):
-    global currentParameter, unidad
+    glLoadIdentity()
+    global currentParameter, unidad , posX, posY, posZ
     if symbol == key.A:
         currentParameter = eye
         unidad = 1.0
@@ -98,10 +104,19 @@ def on_key_press(symbol, modifiers):
         currentParameter[1] = round(currentParameter[1] - unidad,1)
     elif symbol == key.NUM_3:
         currentParameter[2] = round(currentParameter[2] - unidad,1)
+    elif symbol == key.RIGHT:
+        posX += 1.0
+    elif symbol == key.LEFT:
+        posX -= 1.0
+    elif symbol == key.UP:
+        posY += 1.0
+    elif symbol == key.DOWN:
+        posY -= 1.0
+
     print(eye + focus + up)
-    glLoadIdentity()
     gluLookAt(*(eye + focus + up))
     glMatrixMode(GL_MODELVIEW)
+    return pyglet.event.EVENT_HANDLED
     
 #One-time GL setup
 glClearColor(1, 1, 1, 1)
