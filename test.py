@@ -6,11 +6,13 @@ class Board(pyglet.window.Window):
 
     def __init__(self):
         pyglet.window.Window.__init__(self, resizable=True)
-        self.eye   = [0.0, -10.0, 10.0]
+        self.eye   = [0.0, -10.0, 100.0]
         self.focus = [0.0, 0.0, 0.0]
-        self.up    = [0.0, 1.0, 0.0]
+        self.up    = [0.0, 1.0, 0]
         self.currentParameter = self.eye
         self.unidad = 1.0
+        self.deltaX = 0.0
+        self.deltaY = 0.0
         self.posX = 0.0
         self.posY = 0.0
         self.posZ = 0.0
@@ -21,7 +23,7 @@ class Board(pyglet.window.Window):
         glEnable(GL_CULL_FACE)
 
         # Uncomment this line for a wireframe view
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
     def on_draw(self):
 
@@ -62,6 +64,7 @@ class Board(pyglet.window.Window):
         self.drawSphere()
 
     def drawSphere(self):
+        self.moveSphere()
         # Draw sphere
         glColor3f(0.0, 0.0, 0.0)
         q = gluNewQuadric()
@@ -71,6 +74,10 @@ class Board(pyglet.window.Window):
         glTranslatef(self.posX, self.posY, 0.0)
         gluSphere(q,5.0,20,20)
         glPopMatrix()
+
+    def moveSphere(self):
+        self.posX += self.deltaX
+        self.posY += self.deltaY
     
     def on_resize(self, width, height):
         glViewport(0,0,width,height)
@@ -111,13 +118,17 @@ class Board(pyglet.window.Window):
         elif symbol == key.NUM_3:
             self.currentParameter[2] = round(self.currentParameter[2] - self.unidad,1)
         elif symbol == key.RIGHT:
-            self.posX += 1.0
+            self.deltaX = 1.0
+            self.deltaY = 0.0
         elif symbol == key.LEFT:
-            self.posX -= 1.0
+            self.deltaX = -1.0
+            self.deltaY = 0.0
         elif symbol == key.UP:
-            self.posY += 1.0
+            self.deltaY = 1.0
+            self.deltaX = 0.0
         elif symbol == key.DOWN:
-            self.posY -= 1.0
+            self.deltaY = -1.0
+            self.deltaX = 0.0
 
         print(self.eye + self.focus + self.up)
         gluLookAt(*(self.eye + self.focus + self.up))
