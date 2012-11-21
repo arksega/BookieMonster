@@ -65,9 +65,9 @@ class Sphere(Object3D):
         self.q = gluNewQuadric()
         self.deltaX = 0.0
         self.deltaY = 0.0
+        self.deltaZ = 0.0
 
     def draw(self):
-        self.move()
         glColor3f(self.red, self.green, self.blue)
         #gluQuadricDrawStyle(q,GLU_LINE)
         gluQuadricDrawStyle(self.q,GLU_FILL)
@@ -76,9 +76,15 @@ class Sphere(Object3D):
         gluSphere(self.q, self.radius, self.slices, self.stacks)
         glPopMatrix()
 
-    def move(self):
+    def moveForward(self):
         self.posX += self.deltaX
         self.posY += self.deltaY
+        self.posZ += self.deltaZ
+
+    def moveBack(self):
+        self.posX -= self.deltaX
+        self.posY -= self.deltaY
+        self.posZ -= self.deltaZ
 
     def stop(self):
         self.deltaX = 0.0
@@ -99,13 +105,20 @@ class Board(pyglet.window.Window):
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_CULL_FACE)
         self.batch = pyglet.graphics.Batch()
-        self.cube = Box(self.batch, 10.0, 50.0, 10.0,(0.0, 0.0, 1.0),(95.0, 50.0, 0.0))
         self.monster = Sphere(color=(0.3, 0.0, 0.1))
+        self.walls = []
+        self.walls.append(Box(self.batch, 10.0, 50.0, 10.0,(0.0, 0.0, 1.0),(95.0, 25.0, 0.0)))
+        self.walls.append(Box(self.batch, 10.0, 50.0, 10.0,(0.0, 1.0, 0.0),(-95.0, 25.0, 0.0)))
+        self.walls.append(Box(self.batch, 10.0, 50.0, 10.0,(1.0, 0.0, 0.0),(0.0, 25.0, -20.0)))
 
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
     def on_draw(self):
+        self.monster.moveForward()
+        if self.colliding(self.monster, self.walls):
+            self.monster.moveBack()
+            self.monster.stop()
 
         # Clear buffers
         glClear(GL_COLOR_BUFFER_BIT  | GL_DEPTH_BUFFER_BIT)
@@ -134,7 +147,8 @@ class Board(pyglet.window.Window):
                             0,0,255,255, 0,0,255,255)
             )
         )
-        self.cube.draw()
+        for wall in self.walls:
+            wall.draw()
         self.batch.draw()
         glLineWidth(1)
 
@@ -198,6 +212,20 @@ class Board(pyglet.window.Window):
         self.initView()
         return pyglet.event.EVENT_HANDLED
     
+    def colliding(self, object1, objectList):
+        for object2 in objectList:
+            minDistanceX = object1.width     / 2 + object2.width / 2
+            minDistanceY = object1.height    / 2 + object2.height / 2
+            minDistanceZ = object1.thickness / 2 + object2.thickness / 2
+            distanceX = abs(object1.posX - object2.posX)
+            distanceY = abs(object1.posY - object2.posY)
+            distanceZ = abs(object1.posZ - object2.posZ)
+            if  distanceX < minDistanceX \
+                    and  distanceY < minDistanceY \
+                    and  distanceZ < minDistanceZ:
+                return True
+        return False
+
 win = Board()
 
 pyglet.app.run()
