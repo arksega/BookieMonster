@@ -2,14 +2,22 @@ import pyglet
 from pyglet.gl import *
 from pyglet.window import key
 
-class Box():
-    def __init__(self, batch, width, height, thickness, color = (0.0, 0.0, 0.0), pos = (0.0, 0.0, 0.0)):
+class Object3D(object):
+
+    def __init__(self, width, height, thickness, color = (0.0, 0.0, 0.0), pos = (0.0, 0.0, 0.0)):
         self.red    = color[0]
         self.green  = color[1]
         self.blue   = color[2]
         self.posX   = pos[0]
         self.posY   = pos[1]
         self.posZ   = pos[2]
+        self.width = width
+        self.height = height
+        self.thickness = thickness
+
+class Box(Object3D):
+    def __init__(self, batch, width, height, thickness, color = (0.0, 0.0, 0.0), pos = (0.0, 0.0, 0.0)):
+        super(Box, self).__init__(width, height, thickness, color, pos)
         self.x1 = self.posX + width / 2
         self.y1 = self.posY + height / 2
         self.z1 = self.posZ + thickness / 2
@@ -48,17 +56,13 @@ class Box():
                 ('c3f/stream', (self.red, self.green, self.blue) * 36)
         )
 
-class Sphere():
-    def __init__(self, red = 0.0, green = 0.0, blue = 0.0, radius = 5.0, slices = 12, stacks = 12):
-        self.red    = red
-        self.green  = green
-        self.blue   = blue
+class Sphere(Object3D):
+    def __init__(self, radius = 5.0, slices = 12, stacks = 12, color = (0.0, 0.0, 0.0), pos = (0.0, 0.0, 0.0)):
+        super(Sphere, self).__init__(radius * 2, radius * 2, radius * 2, color, pos)
         self.radius = radius
         self.slices = slices
         self.stacks = stacks
         self.q = gluNewQuadric()
-        self.posX = 0.0
-        self.posY = 0.0
         self.deltaX = 0.0
         self.deltaY = 0.0
 
@@ -95,8 +99,8 @@ class Board(pyglet.window.Window):
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_CULL_FACE)
         self.batch = pyglet.graphics.Batch()
-        self.monster = Sphere(0.0, 0.0, 0.1)
         self.cube = Box(self.batch, 10.0, 50.0, 10.0,(0.0, 0.0, 1.0),(95.0, 50.0, 0.0))
+        self.monster = Sphere(color=(0.3, 0.0, 0.1))
 
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
