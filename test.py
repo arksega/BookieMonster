@@ -114,12 +114,13 @@ class Board(pyglet.window.Window):
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
-    def on_draw(self):
+    def update(self, dt):
         self.monster.moveForward()
         if self.colliding(self.monster, self.walls):
             self.monster.moveBack()
             self.monster.stop()
 
+    def on_draw(self):
         # Clear buffers
         glClear(GL_COLOR_BUFFER_BIT  | GL_DEPTH_BUFFER_BIT)
         # Draw Grid
@@ -227,5 +228,5 @@ class Board(pyglet.window.Window):
         return False
 
 win = Board()
-
+pyglet.clock.schedule(win.update)
 pyglet.app.run()
