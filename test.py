@@ -26,7 +26,6 @@ class Box(Object3D):
         self.z2 = self.posZ - thickness / 2
         self.batch = batch
 
-    def draw(self):
         vertex_list = self.batch.add(36, GL_TRIANGLES, None,
             ('v3f/stream', (
                     # Front
@@ -120,6 +119,22 @@ class Board(pyglet.window.Window):
             self.monster.moveBack()
             self.monster.stop()
 
+    def gen_axes(self):
+        glLineWidth(2)
+
+        vertex_list = self.batch.add(6, GL_LINES, None,
+            ('v3f/stream', ( 0,0,0,  100,0,0,
+                            0,0,0,  0,100,0,
+                            0,0,0,  0,0,100)
+            ),
+            ('c4B/stream', ( 255,0,0,255, 255,0,0,255,
+                            0,255,0,255, 0,255,0,255,
+                            0,0,255,255, 0,0,255,255)
+            )
+        )
+
+        glLineWidth(1)
+
     def on_draw(self):
         # Clear buffers
         glClear(GL_COLOR_BUFFER_BIT  | GL_DEPTH_BUFFER_BIT)
@@ -135,25 +150,7 @@ class Board(pyglet.window.Window):
             glVertex3f( 100., 100 - i*10.0, 0.)
         glEnd()
 
-        # Draw axes
-        glLineWidth(2)
-
-        vertex_list = self.batch.add(6, GL_LINES, None,
-            ('v3f/stream', ( 0,0,0,  100,0,0,
-                            0,0,0,  0,100,0,
-                            0,0,0,  0,0,100)
-            ),
-            ('c4B/stream', ( 255,0,0,255, 255,0,0,255,
-                            0,255,0,255, 0,255,0,255,
-                            0,0,255,255, 0,0,255,255)
-            )
-        )
-        for wall in self.walls:
-            wall.draw()
         self.batch.draw()
-        glLineWidth(1)
-
-        #batch = pyglet.graphics.Batch()
         self.monster.draw()
     
     def on_resize(self, width, height):
