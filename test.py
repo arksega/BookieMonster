@@ -143,11 +143,11 @@ class Board(pyglet.window.Window):
         glBegin(GL_LINES)
         glColor3f(0.0, 0.0, 0.0)
         for i in range(0,21):
-            glVertex3f(100 - i*10.0,-100., 0.)
-            glVertex3f(100 -i*10.0, 100., 0.)
+            glVertex3i(100 - i*10,-100, 0)
+            glVertex3i(100 -i*10, 100, 0)
 
-            glVertex3f(-100., 100 - i*10.0, 0.)
-            glVertex3f( 100., 100 - i*10.0, 0.)
+            glVertex3i(-100, 100 - i*10, 0)
+            glVertex3i( 100, 100 - i*10, 0)
         glEnd()
 
         self.batch.draw()
