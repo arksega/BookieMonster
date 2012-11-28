@@ -2,6 +2,94 @@ import pyglet
 from pyglet.gl import *
 from pyglet.window import key
 
+class Point(object):
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+        self.n, self.s, self.e, self.w = [True] * 4
+
+    def __eq__(self,other):
+        return self.x == other.x and self.y == other.y and self.z == other.z
+
+    def __str__(self):
+        return 'Point' + repr((self.x, self.y, self.z, self.n, self.s, self.e, self.w))
+
+    def __repr__(self):
+        return 'Point' + repr((self.x, self.y, self.z))
+
+    def __hash__(self):
+        return self.x * 100 + self.y * 10 + self.z
+
+class Graph(object):
+    def __init__(self):
+        self.relations = dict()
+        self.vertices = dict()
+        self.edges = []
+
+    def __repr__(self):
+        string = 'Vertices:\n'
+        for v in self.vertices:
+            string += str(v) + '\n'
+        return string
+
+    def get_orientation(self, a, b):
+        if   a.y == b.y and a.z == b.z:
+            return 'h'
+        elif a.z == b.z and a.z == b.z:
+            return 'a'
+        elif a.x == b.x and a.y == b.y:
+            return 'v'
+        raise ValueError('Vertices not alligned')
+
+    def get_stored_vertex(self, vertex):
+        if not vertex in self.vertices:
+            self.vertices[vertex] = vertex
+        return self.vertices[vertex]
+
+    def update_limits(self, a, b, orientation):
+        relation = {
+            'h':'xew',
+            'a':'yns',
+            'v':'zud',
+            }
+        def updater_limits(a,b,param):
+            if a.__getattribute__(param[0]) < b.__getattribute__(param[0]):
+                a.__setattr__(param[1], False)
+                b.__setattr__(param[2], False)
+            else:
+                a.__setattr__(param[2], False)
+                b.__setattr__(param[1], False)
+
+        updater_limits(a, b, relation[orientation])
+
+    def add_edge(self, a ,b):
+        if a == b:
+            raise ValueError('No edges between same vertex')
+
+        a = self.get_stored_vertex(a)
+        b = self.get_stored_vertex(b)
+
+        if not self.relations.has_key(a):
+            self.relations[a] = dict()
+
+        orientation = self.get_orientation(a, b)
+        self.relations[a][b] = orientation
+        self.update_limits(a, b, orientation)
+
+    def load_points(self, points):
+        if len(points) % 6 != 0:
+            raise ValueError('The number of reference most be multiple of 6')
+        while points != []:
+            p1 = Point(points.pop(0), points.pop(0), points.pop(0))
+            p2 = Point(points.pop(0), points.pop(0), points.pop(0))
+            self.add_edge(p1, p2)
+
+    def get_edges(self):
+        for i in self.relations:
+            for j in self.relations[i]:
+                yield (i,j)
+
 class Object3D(object):
 
     def __init__(self, width, height, thickness, color = (0.0, 0.0, 0.0), pos = (0.0, 0.0, 0.0)):
@@ -89,6 +177,80 @@ class Sphere(Object3D):
         self.deltaX = 0.0
         self.deltaY = 0.0
 
+class Map(object):
+    def __init__(self, batch, points, alfa = 10, beta = 2):
+        self.alfa = alfa
+        self.beta = beta
+        self.batch = batch
+        self.graph = Graph()
+        self.graph.load_points(points)
+        print self.graph
+        self.objects = []
+        self.generate()
+
+    def generate(self):
+        for p1,p2 in self.graph.get_edges():
+            if p1.x != p2.x:
+                if (abs(p1.x - p2.x) - 1) % 2 == 0:
+                    shift = (self.alfa + self.beta) / 2
+                else:
+                    shift = 0
+                width = (abs(p1.x - p2.x) - 1) * (self.alfa + self.beta)
+                height = self.beta
+                thickness = self.alfa
+                cor = min(p1.x, p2.x) * (self.alfa + self.beta) + abs(p2.x - p1.x) / 2 * (self.alfa + self.beta) + shift
+                x1 = cor + self.beta / 2
+                x2 = cor - self.beta / 2
+                y1 = p1.y * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
+                y2 = y1 + self.alfa + self.beta
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x1,y1,p1.z)))
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x2,y2,p1.z)))
+            elif p1.y != p2.y:
+                if (abs(p1.y - p2.y) - 1) % 2 == 0:
+                    shift = (self.alfa + self.beta) / 2
+                else:
+                    shift = 0
+                width = self.beta
+                height = (abs(p1.y - p2.y) - 1) * (self.alfa + self.beta)
+                thickness = self.alfa
+                cor = min(p1.y, p2.y) * (self.alfa + self.beta) + abs(p2.y - p1.y) / 2 * (self.alfa + self.beta) + shift
+                y1 = cor + self.beta / 2
+                y2 = cor - self.beta / 2
+                x2 = p1.x * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
+                x1 = x2 + self.alfa + self.beta
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x1,y1,p1.z)))
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x2,y2,p1.z)))
+
+        for point in self.graph.vertices:
+            if point.n:
+                width = self.alfa + self.beta
+                height = self.beta
+                thickness = self.alfa
+                x = point.x * (self.beta + self.alfa) - self.beta / 2
+                y = point.y * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x,y,point.z)))
+            if point.s:
+                width = self.alfa + self.beta
+                height = self.beta
+                thickness = self.alfa
+                x = point.x * (self.beta + self.alfa) + self.beta / 2
+                y = point.y * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,1.0), pos=(x,y,point.z)))
+            if point.e:
+                width = self.beta
+                height = self.alfa + self.beta
+                thickness = self.alfa
+                y = point.y * (self.beta + self.alfa) + self.beta / 2
+                x = point.x * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,0.0), pos=(x,y,point.z)))
+            if point.w:
+                width = self.beta
+                height = self.alfa + self.beta
+                thickness = self.alfa
+                y = point.y * (self.beta + self.alfa) - self.beta / 2
+                x = point.x * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,0.0), pos=(x,y,point.z)))
+
 class Board(pyglet.window.Window):
 
     def __init__(self):
@@ -105,13 +267,28 @@ class Board(pyglet.window.Window):
         glEnable(GL_CULL_FACE)
         self.batch = pyglet.graphics.Batch()
         self.monster = Sphere(color=(0.3, 0.0, 0.1))
+        self.gen_axes()
         self.walls = []
-        self.walls.append(Box(self.batch, 10.0, 50.0, 10.0,(0.0, 0.0, 1.0),(95.0, 25.0, 0.0)))
-        self.walls.append(Box(self.batch, 10.0, 50.0, 10.0,(0.0, 1.0, 0.0),(-95.0, 25.0, 0.0)))
-        self.walls.append(Box(self.batch, 10.0, 50.0, 10.0,(1.0, 0.0, 0.0),(0.0, 25.0, -20.0)))
         self.alfa = 10
         self.beta = 2
         self.gridSize = 10
+        self.map = Map(self.batch, [2, 0,0, 3, 0,0,
+                                    3,0,0,  3,1,0,
+                                    3,0,0,  8,0,0,
+                                    8,1,0, 3,1,0,
+                                    8,1,0, 8,0,0,
+                                    8,0,0, 9,0,0,
+                                    9, 0,0, 9,-4,0,
+                                    9,-4,0, 2,-4,0,
+                                    2,-4,0, 2, 0,0,
+                                    -9,8,0, 2,8,0,
+                                    -9,6,0, 1,6,0,
+                                    -9,4,0, 0,4,0,
+                                    -9,2,0, -1,2,0,
+                                    -9,0,0, -2,0,0,
+                                    ]
+                       )
+        self.walls += self.map.objects
 
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
