@@ -109,6 +109,9 @@ class Board(pyglet.window.Window):
         self.walls.append(Box(self.batch, 10.0, 50.0, 10.0,(0.0, 0.0, 1.0),(95.0, 25.0, 0.0)))
         self.walls.append(Box(self.batch, 10.0, 50.0, 10.0,(0.0, 1.0, 0.0),(-95.0, 25.0, 0.0)))
         self.walls.append(Box(self.batch, 10.0, 50.0, 10.0,(1.0, 0.0, 0.0),(0.0, 25.0, -20.0)))
+        self.alfa = 10
+        self.beta = 2
+        self.gridSize = 10
 
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
@@ -142,12 +145,18 @@ class Board(pyglet.window.Window):
 
         glBegin(GL_LINES)
         glColor3f(0.0, 0.0, 0.0)
-        for i in range(0,21):
-            glVertex3i(100 - i*10,-100, 0)
-            glVertex3i(100 -i*10, 100, 0)
+        end = self.alfa * self.gridSize + self.beta * self.gridSize + self.alfa / 2
+        step = self.alfa + self.beta
+        for i in range(0,self.gridSize * 2 + 2):
+            glVertex3i(end - i * step,-end - self.beta, 0)
+            glVertex3i(end - i * step, end + self.beta, 0)
+            glVertex3i(end - i * step + self.beta,-end - self.beta, 0)
+            glVertex3i(end - i * step + self.beta, end + self.beta, 0)
 
-            glVertex3i(-100, 100 - i*10, 0)
-            glVertex3i( 100, 100 - i*10, 0)
+            glVertex3i(-end - self.beta, end - i * step, 0)
+            glVertex3i( end + self.beta, end - i * step, 0)
+            glVertex3i(-end - self.beta, end - i * step + self.beta, 0)
+            glVertex3i( end + self.beta, end - i * step + self.beta, 0)
         glEnd()
 
         self.batch.draw()
