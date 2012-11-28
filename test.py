@@ -255,9 +255,11 @@ class Board(pyglet.window.Window):
 
     def __init__(self):
         pyglet.window.Window.__init__(self, resizable=True)
-        self.eye   = [0.0, -10.0, 100.0]
+        self.eye   = [0.0, -10.0, 145.0]
         self.focus = [0.0, 0.0, 0.0]
-        self.up    = [0.0, 1.0, 0]
+        self.up    = [0.0, 0.0, 1.0]
+        self.width = 1024
+        self.height = 1024
         self.currentParameter = self.eye
         self.speed = 1.0
         #One-time GL setup
@@ -269,6 +271,8 @@ class Board(pyglet.window.Window):
         self.monster = Sphere(color=(0.3, 0.0, 0.1), pos=(29.0,0.0,0.0), radius = 4.0)
         self.gen_axes()
         self.walls = []
+
+        self.perspective = True
         self.alfa = 10
         self.beta = 2
         self.gridSize = 10
@@ -347,16 +351,21 @@ class Board(pyglet.window.Window):
 
     def initView(self):
         glLoadIdentity()
-        gluPerspective(
-            90.0,                                   # Field Of View
-            float(self.width)/float(self.height),   # aspect ratio
-            1.0,                                    # z near
-            1000.0)                                 # z far
+        if self.perspective:
+            gluPerspective(
+                90.0,                                   # Field Of View
+                float(self.width)/float(self.height),   # aspect ratio
+                1.0,                                    # z near
+                1000.0)                                 # z far
+        else:
+            glOrtho(-150, 150, -150, 150, -300, 300);
         gluLookAt(*(self.eye + self.focus + self.up))
 
     def on_key_press(self, symbol, modifiers):
         glLoadIdentity()
-        if symbol == key.A:
+        if symbol == key.P:
+            self.perspective = not self.perspective
+        elif symbol == key.A:
             self.currentParameter = self.eye
             self.speed = 1.0
         elif symbol == key.B:
