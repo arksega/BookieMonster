@@ -7,13 +7,13 @@ class Point(object):
         self.x = x
         self.y = y
         self.z = z
-        self.n, self.s, self.e, self.w = [True] * 4
+        self.n, self.s, self.e, self.w, self.u, self.d = [True] * 6
 
     def __eq__(self,other):
         return self.x == other.x and self.y == other.y and self.z == other.z
 
     def __str__(self):
-        return 'Point' + repr((self.x, self.y, self.z, self.n, self.s, self.e, self.w))
+        return 'Point' + repr((self.x, self.y, self.z, self.n, self.s, self.e, self.w, self.u, self.d))
 
     def __repr__(self):
         return 'Point' + repr((self.x, self.y, self.z))
@@ -49,9 +49,9 @@ class Graph(object):
 
     def update_limits(self, a, b, orientation):
         relation = {
-            'h':'xew',
-            'a':'yns',
-            'v':'zud',
+            'h':'xewud',
+            'a':'ynsud',
+            'v':'zudns',
             }
         def updater_limits(a,b,param):
             if a.__getattribute__(param[0]) < b.__getattribute__(param[0]):
@@ -60,6 +60,10 @@ class Graph(object):
             else:
                 a.__setattr__(param[2], False)
                 b.__setattr__(param[1], False)
+            a.__setattr__(param[3], False)
+            a.__setattr__(param[4], False)
+            b.__setattr__(param[3], False)
+            b.__setattr__(param[4], False)
 
         updater_limits(a, b, relation[orientation])
 
@@ -196,67 +200,100 @@ class Map(object):
                     shift = (self.alfa + self.beta) / 2
                 else:
                     shift = 0
-                width = (abs(p1.x - p2.x) - 1) * (self.alfa + self.beta)
+                width = (abs(p1.x - p2.x) - 1) * (self.alfa + self.beta) - self.beta
                 height = self.beta
                 thickness = self.alfa
-                cor = min(p1.x, p2.x) * (self.alfa + self.beta) + abs(p2.x - p1.x) / 2 * (self.alfa + self.beta) + shift
-                x1 = cor + self.beta / 2
-                x2 = cor - self.beta / 2
+                x = min(p1.x, p2.x) * (self.alfa + self.beta) + abs(p2.x - p1.x) / 2 * (self.alfa + self.beta) + shift
                 y1 = p1.y * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
                 y2 = y1 + self.alfa + self.beta
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x1,y1,p1.z)))
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x2,y2,p1.z)))
+                z = p1.z * (self.alfa + self.beta)
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x,y1,z)))
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x,y2,z)))
             elif p1.y != p2.y:
                 if (abs(p1.y - p2.y) - 1) % 2 == 0:
                     shift = (self.alfa + self.beta) / 2
                 else:
                     shift = 0
                 width = self.beta
-                height = (abs(p1.y - p2.y) - 1) * (self.alfa + self.beta)
+                height = (abs(p1.y - p2.y) - 1) * (self.alfa + self.beta) + self.beta
                 thickness = self.alfa
-                cor = min(p1.y, p2.y) * (self.alfa + self.beta) + abs(p2.y - p1.y) / 2 * (self.alfa + self.beta) + shift
-                y1 = cor + self.beta / 2
-                y2 = cor - self.beta / 2
+                y = min(p1.y, p2.y) * (self.alfa + self.beta) + abs(p2.y - p1.y) / 2 * (self.alfa + self.beta) + shift
                 x2 = p1.x * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
                 x1 = x2 + self.alfa + self.beta
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x1,y1,p1.z)))
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x2,y2,p1.z)))
+                z = p1.z * (self.alfa + self.beta)
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x1,y,z)))
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x2,y,z)))
+            elif p1.z != p2.z:
+                print "in Z"
+                if (abs(p1.z - p2.z) - 1) % 2 == 0:
+                    shift = (self.alfa + self.beta) / 2
+                else:
+                    shift = 0
+                width = self.beta
+                height = self.alfa
+                thickness = (abs(p1.z - p2.z) - 1) * (self.alfa + self.beta) + self.beta
+                z = min(p1.z, p2.z) * (self.alfa + self.beta) + abs(p2.z - p1.z) / 2 * (self.alfa + self.beta) + shift
+                y = p1.y * (self.alfa + self.beta)
+                x2 = p1.x * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
+                x1 = x2 + self.alfa + self.beta
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x1,y,z)))
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x2,y,z)))
 
         for point in self.graph.vertices:
             if point.n:
-                width = self.alfa + self.beta
+                width = self.alfa + self.beta * 2
                 height = self.beta
                 thickness = self.alfa
-                x = point.x * (self.beta + self.alfa) - self.beta / 2
+                x = point.x * (self.beta + self.alfa)
                 y = point.y * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x,y,point.z)))
+                z = point.z * (self.beta + self.alfa)
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x,y,z)))
             if point.s:
-                width = self.alfa + self.beta
+                width = self.alfa + self.beta * 2
                 height = self.beta
                 thickness = self.alfa
-                x = point.x * (self.beta + self.alfa) + self.beta / 2
+                x = point.x * (self.beta + self.alfa)
                 y = point.y * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,1.0), pos=(x,y,point.z)))
+                z = point.z * (self.beta + self.alfa)
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,1.0), pos=(x,y,z)))
             if point.e:
                 width = self.beta
-                height = self.alfa + self.beta
+                height = self.alfa
                 thickness = self.alfa
-                y = point.y * (self.beta + self.alfa) + self.beta / 2
+                y = point.y * (self.beta + self.alfa)
                 x = point.x * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,0.0), pos=(x,y,point.z)))
+                z = point.z * (self.beta + self.alfa)
+                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,0.0), pos=(x,y,z)))
             if point.w:
                 width = self.beta
-                height = self.alfa + self.beta
+                height = self.alfa
                 thickness = self.alfa
-                y = point.y * (self.beta + self.alfa) - self.beta / 2
+                y = point.y * (self.beta + self.alfa)
                 x = point.x * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,0.0), pos=(x,y,point.z)))
+                z = point.z * (self.beta + self.alfa)
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,0.0), pos=(x,y,z)))
+            if point.u:
+                width = self.alfa + self.beta * 2
+                height = self.alfa
+                thickness = self.beta
+                y = point.y * (self.beta + self.alfa)
+                x = point.x * (self.beta + self.alfa)
+                z = point.z * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,0.0), pos=(x,y,z)))
+            if point.d:
+                width = self.alfa + self.beta * 2
+                height = self.alfa
+                thickness = self.beta
+                y = point.y * (self.beta + self.alfa)
+                x = point.x * (self.beta + self.alfa)
+                z = point.z * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
+                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,0.0), pos=(x,y,z)))
 
 class Board(pyglet.window.Window):
 
     def __init__(self):
         pyglet.window.Window.__init__(self, resizable=True)
-        self.eye   = [0.0, -10.0, 145.0]
+        self.eye   = [5.0, -10.0, 20.0]
         self.focus = [0.0, 0.0, 0.0]
         self.up    = [0.0, 0.0, 1.0]
         self.width = 1024
@@ -273,7 +310,7 @@ class Board(pyglet.window.Window):
         self.gen_axes()
         self.walls = []
 
-        self.perspective = True
+        self.perspective = False
         self.alfa = 10
         self.beta = 2
         self.gridSize = 10
@@ -286,11 +323,12 @@ class Board(pyglet.window.Window):
                                     9, 0,0, 9,-4,0,
                                     9,-4,0, 2,-4,0,
                                     2,-4,0, 2, 0,0,
-                                    -9,8,0, 2,8,0,
-                                    -9,6,0, 1,6,0,
-                                    -9,4,0, 0,4,0,
-                                    -9,2,0, -1,2,0,
-                                    -9,0,0, -2,0,0,
+
+                                    2,0,0,  2,0,9,
+                                    -4,4,0,  -4,4,9,
+                                    -4,4,9,  0 ,4,9,
+                                    -4,4,9,  -4,0,9,
+                                    -4,4,9,  -4,8,9,
                                     ]
                        )
         self.walls += self.map.objects
