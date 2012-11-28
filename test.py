@@ -159,7 +159,7 @@ class Sphere(Object3D):
         gluQuadricDrawStyle(self.q,GLU_LINE)
         #gluQuadricDrawStyle(self.q,GLU_FILL)
         glPushMatrix()
-        glTranslatef(self.posX, self.posY, 0.0)
+        glTranslatef(self.posX, self.posY, self.posZ)
         gluSphere(self.q, self.radius, self.slices, self.stacks)
         glPopMatrix()
 
@@ -176,6 +176,7 @@ class Sphere(Object3D):
     def stop(self):
         self.deltaX = 0.0
         self.deltaY = 0.0
+        self.deltaZ = 0.0
 
 class Map(object):
     def __init__(self, batch, points, alfa = 10, beta = 2):
@@ -365,13 +366,13 @@ class Board(pyglet.window.Window):
         glLoadIdentity()
         if symbol == key.P:
             self.perspective = not self.perspective
-        elif symbol == key.A:
+        elif symbol == key.X:
             self.currentParameter = self.eye
-            self.speed = 1.0
-        elif symbol == key.B:
+            self.speed = 10.0
+        elif symbol == key.Y:
             self.currentParameter = self.focus
-            self.speed = 1.0
-        elif symbol == key.C:
+            self.speed = 10.0
+        elif symbol == key.Z:
             self.speed = 0.1
             self.currentParameter = self.up
         elif symbol == key.NUM_7:
@@ -386,18 +387,24 @@ class Board(pyglet.window.Window):
             self.currentParameter[1] = round(self.currentParameter[1] - self.speed,1)
         elif symbol == key.NUM_3:
             self.currentParameter[2] = round(self.currentParameter[2] - self.speed,1)
-        elif symbol == key.RIGHT:
+        elif symbol in [key.RIGHT, key.L, key.F]:
+            self.monster.stop()
             self.monster.deltaX = 1.0
-            self.monster.deltaY = 0.0
-        elif symbol == key.LEFT:
+        elif symbol in [key.LEFT, key.J, key.S]:
+            self.monster.stop()
             self.monster.deltaX = -1.0
-            self.monster.deltaY = 0.0
-        elif symbol == key.UP:
+        elif symbol in [key.UP, key.I]:
+            self.monster.stop()
             self.monster.deltaY = 1.0
-            self.monster.deltaX = 0.0
-        elif symbol == key.DOWN:
+        elif symbol in [key.DOWN, key.K]:
+            self.monster.stop()
             self.monster.deltaY = -1.0
-            self.monster.deltaX = 0.0
+        elif symbol == key.E:
+            self.monster.stop()
+            self.monster.deltaZ = 1.0
+        elif symbol == key.D:
+            self.monster.stop()
+            self.monster.deltaZ = -1.0
         elif symbol == key.SPACE:
             self.monster.stop()
 
