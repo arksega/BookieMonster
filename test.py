@@ -156,8 +156,8 @@ class Sphere(Object3D):
 
     def draw(self):
         glColor3f(self.red, self.green, self.blue)
-        #gluQuadricDrawStyle(q,GLU_LINE)
-        gluQuadricDrawStyle(self.q,GLU_FILL)
+        gluQuadricDrawStyle(self.q,GLU_LINE)
+        #gluQuadricDrawStyle(self.q,GLU_FILL)
         glPushMatrix()
         glTranslatef(self.posX, self.posY, 0.0)
         gluSphere(self.q, self.radius, self.slices, self.stacks)
@@ -266,7 +266,7 @@ class Board(pyglet.window.Window):
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_CULL_FACE)
         self.batch = pyglet.graphics.Batch()
-        self.monster = Sphere(color=(0.3, 0.0, 0.1))
+        self.monster = Sphere(color=(0.3, 0.0, 0.1), pos=(29.0,0.0,0.0), radius = 4.0)
         self.gen_axes()
         self.walls = []
         self.alfa = 10
