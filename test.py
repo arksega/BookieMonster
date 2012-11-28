@@ -419,6 +419,7 @@ class Board(pyglet.window.Window):
                 return True
         return False
 
-win = Board()
-pyglet.clock.schedule(win.update)
-pyglet.app.run()
+if __name__ == '__main__':
+    win = Board()
+    pyglet.clock.schedule_interval(win.update, 0.033)
+    pyglet.app.run()
