@@ -36,7 +36,7 @@ class Graph(object):
     def get_orientation(self, a, b):
         if   a.y == b.y and a.z == b.z:
             return 'h'
-        elif a.z == b.z and a.z == b.z:
+        elif a.z == b.z and a.x == b.x:
             return 'a'
         elif a.x == b.x and a.y == b.y:
             return 'v'
