@@ -173,7 +173,7 @@ class Box(Object3D):
         self.z2 = self.posZ - thickness / 2
         self.batch = batch
 
-        vertex_list = self.batch.add(36, GL_TRIANGLES, None,
+        self.vertex_list = self.batch.add(36, GL_TRIANGLES, None,
             ('v3f/stream', (
                     # Front
                     self.x1,self.y1,self.z1, self.x2,self.y1,self.z1, self.x1,self.y2,self.z1,
@@ -199,7 +199,7 @@ class Box(Object3D):
                     self.x1,self.y2,self.z1, self.x2,self.y2,self.z1, self.x1,self.y2,self.z2,
                     self.x2,self.y2,self.z1, self.x2,self.y2,self.z2, self.x1,self.y2,self.z2)
                 ),
-                ('c3f/stream', (self.red, self.green, self.blue) * 36)
+                ('c4f/stream', (self.red, self.green, self.blue, 1.0) * 36)
         )
 
 class Sphere(Object3D):
@@ -237,112 +237,112 @@ class Sphere(Object3D):
         self.deltaY = 0.0
         self.deltaZ = 0.0
 
-class Map(object):
+class Map3D(object):
     def __init__(self, batch, points, alfa = 10, beta = 2):
         self.alfa = alfa
         self.beta = beta
         self.batch = batch
-        self.graph = Graph()
+        self.graph = Map()
         self.graph.load_points(points)
-        print self.graph
+        print self.graph.planes
         self.objects = []
         self.generate()
 
     def generate(self):
-        for p1,p2 in self.graph.get_edges():
-            if p1.x != p2.x:
-                if (abs(p1.x - p2.x) - 1) % 2 == 0:
-                    shift = (self.alfa + self.beta) / 2
-                else:
-                    shift = 0
-                width = (abs(p1.x - p2.x) - 1) * (self.alfa + self.beta) - self.beta
-                height = self.beta
-                thickness = self.alfa
-                x = min(p1.x, p2.x) * (self.alfa + self.beta) + abs(p2.x - p1.x) / 2 * (self.alfa + self.beta) + shift
-                y1 = p1.y * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
-                y2 = y1 + self.alfa + self.beta
-                z = p1.z * (self.alfa + self.beta)
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x,y1,z)))
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x,y2,z)))
-            elif p1.y != p2.y:
-                if (abs(p1.y - p2.y) - 1) % 2 == 0:
-                    shift = (self.alfa + self.beta) / 2
-                else:
-                    shift = 0
-                width = self.beta
-                height = (abs(p1.y - p2.y) - 1) * (self.alfa + self.beta) + self.beta
-                thickness = self.alfa
-                y = min(p1.y, p2.y) * (self.alfa + self.beta) + abs(p2.y - p1.y) / 2 * (self.alfa + self.beta) + shift
-                x2 = p1.x * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
-                x1 = x2 + self.alfa + self.beta
-                z = p1.z * (self.alfa + self.beta)
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x1,y,z)))
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x2,y,z)))
-            elif p1.z != p2.z:
-                print "in Z"
-                if (abs(p1.z - p2.z) - 1) % 2 == 0:
-                    shift = (self.alfa + self.beta) / 2
-                else:
-                    shift = 0
-                width = self.beta
-                height = self.alfa
-                thickness = (abs(p1.z - p2.z) - 1) * (self.alfa + self.beta) + self.beta
-                z = min(p1.z, p2.z) * (self.alfa + self.beta) + abs(p2.z - p1.z) / 2 * (self.alfa + self.beta) + shift
-                y = p1.y * (self.alfa + self.beta)
-                x2 = p1.x * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
-                x1 = x2 + self.alfa + self.beta
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x1,y,z)))
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x2,y,z)))
+        for plane in self.graph.get_planes():
+            for p1,p2 in plane.get_edges():
+                if p1.x != p2.x:
+                    if (abs(p1.x - p2.x) - 1) % 2 == 0:
+                        shift = (self.alfa + self.beta) / 2
+                    else:
+                        shift = 0
+                    width = (abs(p1.x - p2.x) - 1) * (self.alfa + self.beta) - self.beta
+                    height = self.beta
+                    thickness = self.alfa
+                    x = min(p1.x, p2.x) * (self.alfa + self.beta) + abs(p2.x - p1.x) / 2 * (self.alfa + self.beta) + shift
+                    y1 = p1.y * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
+                    y2 = y1 + self.alfa + self.beta
+                    z = p1.z * (self.alfa + self.beta)
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x,y1,z)))
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x,y2,z)))
+                elif p1.y != p2.y:
+                    if (abs(p1.y - p2.y) - 1) % 2 == 0:
+                        shift = (self.alfa + self.beta) / 2
+                    else:
+                        shift = 0
+                    width = self.beta
+                    height = (abs(p1.y - p2.y) - 1) * (self.alfa + self.beta) + self.beta
+                    thickness = self.alfa
+                    y = min(p1.y, p2.y) * (self.alfa + self.beta) + abs(p2.y - p1.y) / 2 * (self.alfa + self.beta) + shift
+                    x2 = p1.x * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
+                    x1 = x2 + self.alfa + self.beta
+                    z = p1.z * (self.alfa + self.beta)
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x1,y,z)))
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x2,y,z)))
+                elif p1.z != p2.z:
+                    if (abs(p1.z - p2.z) - 1) % 2 == 0:
+                        shift = (self.alfa + self.beta) / 2
+                    else:
+                        shift = 0
+                    width = self.beta
+                    height = self.alfa
+                    thickness = (abs(p1.z - p2.z) - 1) * (self.alfa + self.beta) + self.beta
+                    z = min(p1.z, p2.z) * (self.alfa + self.beta) + abs(p2.z - p1.z) / 2 * (self.alfa + self.beta) + shift
+                    y = p1.y * (self.alfa + self.beta)
+                    x2 = p1.x * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
+                    x1 = x2 + self.alfa + self.beta
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x1,y,z)))
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x2,y,z)))
 
-        for point in self.graph.vertices:
-            if point.n:
-                width = self.alfa + self.beta * 2
-                height = self.beta
-                thickness = self.alfa
-                x = point.x * (self.beta + self.alfa)
-                y = point.y * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
-                z = point.z * (self.beta + self.alfa)
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x,y,z)))
-            if point.s:
-                width = self.alfa + self.beta * 2
-                height = self.beta
-                thickness = self.alfa
-                x = point.x * (self.beta + self.alfa)
-                y = point.y * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
-                z = point.z * (self.beta + self.alfa)
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,1.0), pos=(x,y,z)))
-            if point.e:
-                width = self.beta
-                height = self.alfa
-                thickness = self.alfa
-                y = point.y * (self.beta + self.alfa)
-                x = point.x * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
-                z = point.z * (self.beta + self.alfa)
-                self.objects.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,0.0), pos=(x,y,z)))
-            if point.w:
-                width = self.beta
-                height = self.alfa
-                thickness = self.alfa
-                y = point.y * (self.beta + self.alfa)
-                x = point.x * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
-                z = point.z * (self.beta + self.alfa)
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,0.0), pos=(x,y,z)))
-            if point.u:
-                width = self.alfa + self.beta * 2
-                height = self.alfa
-                thickness = self.beta
-                y = point.y * (self.beta + self.alfa)
-                x = point.x * (self.beta + self.alfa)
-                z = point.z * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,0.0), pos=(x,y,z)))
-            if point.d:
-                width = self.alfa + self.beta * 2
-                height = self.alfa
-                thickness = self.beta
-                y = point.y * (self.beta + self.alfa)
-                x = point.x * (self.beta + self.alfa)
-                z = point.z * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
-                self.objects.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,0.0), pos=(x,y,z)))
+            for point in plane.vertices:
+                if point.n:
+                    width = self.alfa + self.beta * 2
+                    height = self.beta
+                    thickness = self.alfa
+                    x = point.x * (self.beta + self.alfa)
+                    y = point.y * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
+                    z = point.z * (self.beta + self.alfa)
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x,y,z)))
+                if point.s:
+                    width = self.alfa + self.beta * 2
+                    height = self.beta
+                    thickness = self.alfa
+                    x = point.x * (self.beta + self.alfa)
+                    y = point.y * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
+                    z = point.z * (self.beta + self.alfa)
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,1.0), pos=(x,y,z)))
+                if point.e:
+                    width = self.beta
+                    height = self.alfa
+                    thickness = self.alfa
+                    y = point.y * (self.beta + self.alfa)
+                    x = point.x * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
+                    z = point.z * (self.beta + self.alfa)
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,0.0), pos=(x,y,z)))
+                if point.w:
+                    width = self.beta
+                    height = self.alfa
+                    thickness = self.alfa
+                    y = point.y * (self.beta + self.alfa)
+                    x = point.x * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
+                    z = point.z * (self.beta + self.alfa)
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,0.0), pos=(x,y,z)))
+                if point.u:
+                    width = self.alfa + self.beta * 2
+                    height = self.alfa
+                    thickness = self.beta
+                    y = point.y * (self.beta + self.alfa)
+                    x = point.x * (self.beta + self.alfa)
+                    z = point.z * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,0.0), pos=(x,y,z)))
+                if point.d:
+                    width = self.alfa + self.beta * 2
+                    height = self.alfa
+                    thickness = self.beta
+                    y = point.y * (self.beta + self.alfa)
+                    x = point.x * (self.beta + self.alfa)
+                    z = point.z * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
+                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,0.0), pos=(x,y,z)))
 
 class Board(pyglet.window.Window):
 
@@ -360,16 +360,20 @@ class Board(pyglet.window.Window):
         glColor3f(1, 0, 0)
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_CULL_FACE)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        glEnable (GL_LINE_SMOOTH)
         self.batch = pyglet.graphics.Batch()
-        self.monster = Sphere(color=(0.3, 0.0, 0.1), pos=(29.0,0.0,0.0), radius = 4.0)
+        self.monster = Sphere(color=(1.0, 0.0, 0.1), pos=(29.0,0.0,0.0), radius = 4.0)
         self.gen_axes()
         self.walls = []
 
+        self.alpha = 0.0
         self.perspective = False
         self.alfa = 10
         self.beta = 2
         self.gridSize = 10
-        self.map = Map(self.batch, [2, 0,0, 3, 0,0,
+        self.map = Map3D(self.batch, [2, 0,0, 3, 0,0,
                                     3,0,0,  3,1,0,
                                     3,0,0,  8,0,0,
                                     8,1,0, 3,1,0,
@@ -384,9 +388,15 @@ class Board(pyglet.window.Window):
                                     -4,4,9,  0 ,4,9,
                                     -4,4,9,  -4,0,9,
                                     -4,4,9,  -4,8,9,
+
+                                    -2,-2,2, -6,-2,2,
+                                    -6,-2,2, -6,-2,6,
+                                    -6,-2,6, -2,-2,6,
+                                    -2,-2,6, -2,-2,2,
                                     ]
                        )
-        self.walls += self.map.objects
+        for plane in self.map.graph.get_planes():
+            self.walls += plane.walls
 
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
@@ -468,6 +478,16 @@ class Board(pyglet.window.Window):
         elif symbol == key.Z:
             self.speed = 0.1
             self.currentParameter = self.up
+        elif symbol == key.NUM_ADD:
+            self.alpha += 0.1
+            plane = self.map.graph.planes['h'][0]
+            for wall in plane.walls:
+                wall.vertex_list.colors = (wall.vertex_list.colors[:3] + [self.alpha]) * 36
+        elif symbol == key.NUM_SUBTRACT:
+            self.alpha -= 0.1
+            plane = self.map.graph.planes['h'][0]
+            for wall in plane.walls:
+                wall.vertex_list.colors = (wall.vertex_list.colors[:3] + [self.alpha]) * 36
         elif symbol == key.NUM_7:
             self.currentParameter[0] = round(self.currentParameter[0] + self.speed,1)
         elif symbol == key.NUM_8:
