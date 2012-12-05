@@ -25,7 +25,6 @@ class Graph(object):
     def __init__(self):
         self.relations = dict()
         self.vertices = dict()
-        self.edges = []
 
     def __repr__(self):
         string = 'Vertices:\n'
@@ -60,10 +59,6 @@ class Graph(object):
             else:
                 a.__setattr__(param[2], False)
                 b.__setattr__(param[1], False)
-            a.__setattr__(param[3], False)
-            a.__setattr__(param[4], False)
-            b.__setattr__(param[3], False)
-            b.__setattr__(param[4], False)
 
         updater_limits(a, b, relation[orientation])
 
