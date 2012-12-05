@@ -94,6 +94,66 @@ class Graph(object):
             for j in self.relations[i]:
                 yield (i,j)
 
+class Map(Graph):
+    def __init__(self):
+        super(Map, self).__init__()
+        self.planes = dict()
+        self.planes['v'] = dict()
+        self.planes['h'] = dict()
+
+    def add_planes(self):
+
+        def add_plane_v(a, b, orientation):
+            if not isinstance(self.planes['v'].get(a.y, None), Plane):
+                self.planes['v'][a.y] = Plane()
+            self.planes['v'][a.y].add_edge(a, b)
+
+        def add_plane_h(a, b, orientation):
+            if not isinstance(self.planes['h'].get(a.z, None), Plane):
+                self.planes['h'][a.z] = Plane()
+            self.planes['h'][a.z].add_edge(a, b)
+
+        for a in self.relations:
+            for b in self.relations[a]:
+                orientation = self.relations[a][b]
+
+                if orientation == 'v':
+                    add_plane_v(a, b, orientation)
+                if orientation == 'a':
+                    add_plane_h(a, b, orientation)
+                if orientation == 'h':
+                    add_plane_v(a, b, orientation)
+                    add_plane_h(a, b, orientation)
+
+        for plane in self.planes['v'].keys():
+            valid = False
+            for vertex in self.planes['v'][plane].vertices:
+                if not vertex.u or not vertex.d:
+                    valid = True
+            if not valid:
+                self.planes['v'].pop(plane)
+
+        for plane in self.planes['h'].keys():
+            valid = False
+            for vertex in self.planes['h'][plane].vertices:
+                if not vertex.n or not vertex.s:
+                    valid = True
+            if not valid:
+                self.planes['h'].pop(plane)
+
+    def get_planes(self):
+        return self.planes['h'].values() + self.planes['v'].values()
+
+    def load_points(self, points):
+        super(Map, self).load_points(points)
+        self.add_planes()
+
+class Plane(Graph):
+
+    def __init__(self):
+        super(Plane, self).__init__()
+        self.walls = []
+
 class Object3D(object):
 
     def __init__(self, width, height, thickness, color = (0.0, 0.0, 0.0), pos = (0.0, 0.0, 0.0)):
