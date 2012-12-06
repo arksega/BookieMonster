@@ -199,7 +199,7 @@ class Box(Object3D):
                     self.x1,self.y2,self.z1, self.x2,self.y2,self.z1, self.x1,self.y2,self.z2,
                     self.x2,self.y2,self.z1, self.x2,self.y2,self.z2, self.x1,self.y2,self.z2)
                 ),
-                ('c4f/stream', (self.red, self.green, self.blue, 1.0) * 36)
+                ('c4f/stream', (self.red, self.green, self.blue, 0.1) * 36)
         )
 
 class Sphere(Object3D):
@@ -364,7 +364,7 @@ class Board(pyglet.window.Window):
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable (GL_LINE_SMOOTH)
         self.batch = pyglet.graphics.Batch()
-        self.monster = Sphere(color=(1.0, 0.0, 0.1), pos=(29.0,0.0,0.0), radius = 4.0)
+        self.monster = Sphere(color=(1.0, 0.0, 0.1), pos=(24.0,-12.0,0.0), radius = 4.0)
         self.gen_axes()
         self.walls = []
 
@@ -398,14 +398,77 @@ class Board(pyglet.window.Window):
         for plane in self.map.graph.get_planes():
             self.walls += plane.walls
 
+        self.grid_monster = self.pos_to_grid(self.monster)
+        self.active_plane_type = 'h'
+        self.active_plane = 0
+        self.set_plane_opacity(self.map.graph.planes['h'][0], 1.0)
+
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+
+    def set_plane_opacity(self, plane, opacity):
+        for wall in plane.walls:
+            wall.vertex_list.colors = (wall.vertex_list.colors[:3] + [opacity]) * 36
+
+    def pos_to_grid(self, obj):
+        x = self.axis_to_grid(obj.posX)
+        y = self.axis_to_grid(obj.posY)
+        z = self.axis_to_grid(obj.posZ)
+        return [x, y, z]
+
+    def axis_to_grid(self, pos):
+        if pos == 0:
+            return 0
+        shift = self.alfa / 2 + self.beta / 2
+        if abs(pos) < shift:
+            x = 0
+        else:
+            x = self.get_units(abs(pos) - shift, self.alfa + self.beta)
+        return int(x * (pos / abs(pos)))
+
+    def get_units(self, a, b):
+        r = int(a / b)
+        if a % b > 0:
+            r += 1
+        return r
 
     def update(self, dt):
         self.monster.moveForward()
         if self.colliding(self.monster, self.walls):
             self.monster.moveBack()
             self.monster.stop()
+        print self.pos_to_grid(self.monster), self.monster.posX, self.monster.posY, self.monster.posZ
+
+        current_grid_monster = self.pos_to_grid(self.monster)
+        if self.grid_monster != current_grid_monster:
+            candidat = None
+            if self.active_plane_type == 'h':
+                for key in self.map.graph.planes['v'].keys():
+                    if key == current_grid_monster[1]:
+                        candidat = key
+                        self.set_plane_opacity(self.map.graph.planes['v'][candidat], 0.5)
+                    else:
+                        self.set_plane_opacity(self.map.graph.planes['v'][key], 0.1)
+                if current_grid_monster[2] != self.grid_monster[2] and candidat != None:
+                    self.set_plane_opacity(self.map.graph.planes['v'][candidat], 1.0)
+                    self.set_plane_opacity(self.map.graph.planes['h'][self.active_plane], 0.1)
+                    self.active_plane = candidat
+                    self.active_plane_type = 'v'
+
+            elif self.active_plane_type == 'v':
+                for key in self.map.graph.planes['h'].keys():
+                    if key == current_grid_monster[2]:
+                        candidat = key
+                        self.set_plane_opacity(self.map.graph.planes['h'][candidat], 0.5)
+                    else:
+                        self.set_plane_opacity(self.map.graph.planes['h'][key], 0.1)
+                if current_grid_monster[1] != self.grid_monster[1] and candidat != None:
+                    self.set_plane_opacity(self.map.graph.planes['h'][candidat], 1.0)
+                    self.set_plane_opacity(self.map.graph.planes['v'][self.active_plane], 0.1)
+                    self.active_plane = candidat
+                    self.active_plane_type = 'h'
+
+            self.grid_monster = current_grid_monster
 
     def gen_axes(self):
         glLineWidth(2)
