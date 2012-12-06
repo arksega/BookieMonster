@@ -426,8 +426,8 @@ class Board(pyglet.window.Window):
     def on_draw(self):
         # Clear buffers
         glClear(GL_COLOR_BUFFER_BIT  | GL_DEPTH_BUFFER_BIT)
-        # Draw Grid
 
+        # Draw Grid
         glBegin(GL_LINES)
         glColor3f(0.0, 0.0, 0.0)
         end = self.alfa * self.gridSize + self.beta * self.gridSize + self.alfa / 2
@@ -478,16 +478,6 @@ class Board(pyglet.window.Window):
         elif symbol == key.Z:
             self.speed = 0.1
             self.currentParameter = self.up
-        elif symbol == key.NUM_ADD:
-            self.alpha += 0.1
-            plane = self.map.graph.planes['h'][0]
-            for wall in plane.walls:
-                wall.vertex_list.colors = (wall.vertex_list.colors[:3] + [self.alpha]) * 36
-        elif symbol == key.NUM_SUBTRACT:
-            self.alpha -= 0.1
-            plane = self.map.graph.planes['h'][0]
-            for wall in plane.walls:
-                wall.vertex_list.colors = (wall.vertex_list.colors[:3] + [self.alpha]) * 36
         elif symbol == key.NUM_7:
             self.currentParameter[0] = round(self.currentParameter[0] + self.speed,1)
         elif symbol == key.NUM_8:
@@ -521,7 +511,6 @@ class Board(pyglet.window.Window):
         elif symbol == key.SPACE:
             self.monster.stop()
 
-        print(self.eye + self.focus + self.up)
         self.initView()
         return pyglet.event.EVENT_HANDLED
     
