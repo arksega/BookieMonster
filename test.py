@@ -216,8 +216,8 @@ class Sphere(Object3D):
 
     def draw(self):
         glColor3f(self.red, self.green, self.blue)
-        gluQuadricDrawStyle(self.q,GLU_LINE)
-        #gluQuadricDrawStyle(self.q,GLU_FILL)
+        #gluQuadricDrawStyle(self.q,GLU_LINE)
+        gluQuadricDrawStyle(self.q,GLU_FILL)
         glPushMatrix()
         glTranslatef(self.posX, self.posY, self.posZ)
         gluSphere(self.q, self.radius, self.slices, self.stacks)
@@ -249,7 +249,7 @@ class Map3D(object):
         self.objects = []
         self.generate()
 
-    def gen_walls(self, p1, p2, edge_orientation, plane_orientation):
+    def gen_walls(self, p1, p2, edge_orientation, plane_orientation, color):
         orientation_axis = {'h':'x', 'v':'z', 'a':'y'}
         a = self.alfa
         b = self.beta
@@ -286,11 +286,11 @@ class Map3D(object):
         x1, x2 = extract(relation[plane_orientation][edge_orientation][3])
         y1, y2 = extract(relation[plane_orientation][edge_orientation][4])
         z1, z2 = extract(relation[plane_orientation][edge_orientation][5])
-        b1 = Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x1,y1,z1))
-        b2 = Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x2,y2,z2))
+        b1 = Box(self.batch, width, height, thickness, color = color, pos = (x1,y1,z1))
+        b2 = Box(self.batch, width, height, thickness, color = color, pos = (x2,y2,z2))
         return (b1, b2)
 
-    def gen_limits(self, point, orientation):
+    def gen_limits(self, point, orientation, color):
         w = self.alfa + self.beta * 2
         t = self.beta
         h = self.alfa / 2
@@ -318,18 +318,23 @@ class Map3D(object):
                 for axis in 'xyz':
                     local[axis] = point.__getattribute__(axis) * (self.beta + self.alfa)
                 local[rel[attrib][3]] = local[rel[attrib][3]] + (self.alfa + self.beta) / 2 * rel[attrib][4]
-                boxes.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,1.0), pos=(local['x'],local['y'],local['z'])))
+                boxes.append(Box(self.batch, width, height, thickness, color = color, pos = (local['x'], local['y'], local['z'])))
         return boxes
 
     def generate(self):
         for plane in self.graph.get_planes():
+            if plane.orientation == 'h':
+                color = (0.0, 0.0, 1.0)
+            else:
+                color = (0.0, 0.8, 0.0)
+
             for p1,p2, orientation in plane.get_edges():
-                w1, w2 = self.gen_walls(p1, p2, orientation, plane.orientation)
+                w1, w2 = self.gen_walls(p1, p2, orientation, plane.orientation, color)
                 plane.walls.append(w1)
                 plane.walls.append(w2)
 
             for point in plane.vertices:
-                plane.walls += self.gen_limits(point, plane.orientation)
+                plane.walls += self.gen_limits(point, plane.orientation, color)
 
 class Board(pyglet.window.Window):
 
