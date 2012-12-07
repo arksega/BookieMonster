@@ -148,6 +148,7 @@ class Plane(Graph):
     def __init__(self, orientation):
         super(Plane, self).__init__()
         self.walls = []
+        self.books = []
         self.orientation = orientation
 
 class Object3D(object):
@@ -214,6 +215,15 @@ class Sphere(Object3D):
         self.deltaY = 0.0
         self.deltaZ = 0.0
 
+    def __eq__(self, other):
+        return self.posX == other.posX and self.posY == other.posY and self.posZ == other.posZ
+
+    def __hash__(self):
+        return hash((self.posX, self.posY, self.posZ))
+
+    def __repr__(self):
+        return str((self.posX, self.posY, self.posZ))
+
     def draw(self):
         glColor3f(self.red, self.green, self.blue)
         #gluQuadricDrawStyle(self.q,GLU_LINE)
@@ -245,8 +255,8 @@ class Map3D(object):
         self.batch = batch
         self.graph = Map()
         self.graph.load_points(points)
-        print self.graph.planes
         self.objects = []
+        self.books = []
         self.generate()
 
     def gen_walls(self, p1, p2, edge_orientation, plane_orientation, color):
@@ -290,7 +300,7 @@ class Map3D(object):
         b2 = Box(self.batch, width, height, thickness, color = color, pos = (x2,y2,z2))
         return (b1, b2)
 
-    def gen_limits(self, point, orientation, color):
+    def gen_limits(self, point, plane_orientation, color):
         w = self.alfa + self.beta * 2
         t = self.beta
         h = self.alfa / 2
@@ -303,7 +313,7 @@ class Map3D(object):
             'd':[w, h, t, 'z', -1],
             }
         boxes = []
-        if orientation == 'h':
+        if plane_orientation == 'h':
             limits = 'nsew'
         else:
             limits = 'ewud'
@@ -321,26 +331,43 @@ class Map3D(object):
                 boxes.append(Box(self.batch, width, height, thickness, color = color, pos = (local['x'], local['y'], local['z'])))
         return boxes
 
+    def gen_books(self, p1, p2, orientation, color):
+        orientation_axis = {'h':'x', 'v':'z', 'a':'y'}
+        books = []
+        orientation = orientation_axis[orientation]
+        param1 = p1.__getattribute__(orientation)
+        param2 = p2.__getattribute__(orientation)
+        f1,f2 =  set(['x', 'y', 'z']) - set([orientation])
+        local = {}
+        local[f1] = p1.__getattribute__(f1) * (self.beta + self.alfa)
+        local[f2] = p1.__getattribute__(f2) * (self.beta + self.alfa)
+        for pos in range(min(param1, param2), max(param1, param2) + 1):
+            local[orientation] = pos * (self.beta + self.alfa)
+            books.append(Sphere(color = color, pos = (local['x'], local['y'], local['z']), radius = 2))
+        return books
+
     def generate(self):
         for plane in self.graph.get_planes():
             if plane.orientation == 'h':
-                color = (0.0, 0.0, 1.0)
+                color_limit = (0.0, 0.0, 1.0)
+                color_book  = (0.0, 1.0, 1.0)
             else:
-                color = (0.0, 0.8, 0.0)
+                color_limit = (0.0, 0.8, 0.0)
+                color_book  = (1.0, 0.8, 0.0)
 
             for p1,p2, orientation in plane.get_edges():
-                w1, w2 = self.gen_walls(p1, p2, orientation, plane.orientation, color)
-                plane.walls.append(w1)
-                plane.walls.append(w2)
+                plane.walls += self.gen_walls(p1, p2, orientation, plane.orientation, color_limit)
+                plane.books += self.gen_books(p1, p2, orientation, color_book)
+            plane.books = set(plane.books)
 
             for point in plane.vertices:
-                plane.walls += self.gen_limits(point, plane.orientation, color)
+                plane.walls += self.gen_limits(point, plane.orientation, color_limit)
 
 class Board(pyglet.window.Window):
 
     def __init__(self):
         pyglet.window.Window.__init__(self, resizable=True)
-        self.eye   = [5.0, -10.0, 20.0]
+        self.eye   = [9.0, -10.0, 10.0]
         self.focus = [0.0, 0.0, 0.0]
         self.up    = [0.0, 0.0, 1.0]
         self.width = 1024
@@ -399,6 +426,7 @@ class Board(pyglet.window.Window):
                        )
         for plane in self.map.graph.get_planes():
             self.walls += plane.walls
+            print plane.orientation, len(plane.books), plane.books
 
         self.grid_monster = self.pos_to_grid(self.monster)
         self.active_plane_type = 'h'
@@ -524,6 +552,9 @@ class Board(pyglet.window.Window):
 
         self.batch.draw()
         self.monster.draw()
+        for plane in self.map.graph.get_planes():
+            for book in plane.books:
+                book.draw()
     
     def on_resize(self, width, height):
         glViewport(0,0,self.width,self.height)
