@@ -87,7 +87,7 @@ class Graph(object):
     def get_edges(self):
         for i in self.relations:
             for j in self.relations[i]:
-                yield (i,j)
+                yield (i, j, self.relations[i][j])
 
 class Map(Graph):
     def __init__(self):
@@ -100,12 +100,12 @@ class Map(Graph):
 
         def add_plane_v(a, b, orientation):
             if not isinstance(self.planes['v'].get(a.y, None), Plane):
-                self.planes['v'][a.y] = Plane()
+                self.planes['v'][a.y] = Plane('v')
             self.planes['v'][a.y].add_edge(a, b)
 
         def add_plane_h(a, b, orientation):
             if not isinstance(self.planes['h'].get(a.z, None), Plane):
-                self.planes['h'][a.z] = Plane()
+                self.planes['h'][a.z] = Plane('h')
             self.planes['h'][a.z].add_edge(a, b)
 
         for a in self.relations:
@@ -145,9 +145,10 @@ class Map(Graph):
 
 class Plane(Graph):
 
-    def __init__(self):
+    def __init__(self, orientation):
         super(Plane, self).__init__()
         self.walls = []
+        self.orientation = orientation
 
 class Object3D(object):
 
@@ -248,101 +249,87 @@ class Map3D(object):
         self.objects = []
         self.generate()
 
+    def gen_walls(self, p1, p2, edge_orientation, plane_orientation):
+        orientation_axis = {'h':'x', 'v':'z', 'a':'y'}
+        a = self.alfa
+        b = self.beta
+        param2 = p1.__getattribute__(orientation_axis[edge_orientation])
+        param1 = p2.__getattribute__(orientation_axis[edge_orientation])
+        shift = (a + b) / 2 if (abs(param1 - param2) - 1) % 2 == 0 else 0
+        c = (abs(param1 - param2) - 1) * (a + b) + b
+        m = min(param1, param2) * (a + b) + abs(param1 - param2) / 2 * (a + b) + shift
+        relation = {
+            'h':{
+                'h':[c, b, a/2,  'm', 'vy', 'fz'],
+                'a':[b, c, a/2, 'vx',  'm', 'fz'],
+                },
+            'v':{
+                'v':[b, a/2, c, 'vx', 'fy',  'm'],
+                'h':[c, a/2, b,  'm', 'fy', 'vz'],
+                }
+            }
+
+        def extract(string):
+            if string == 'm':
+                return (m, m)
+            if string[0] == 'v':
+                v1 = p1.__getattribute__(string[1]) * (a + b) - (a + b) / 2
+                v2 = v1 + a + b
+                return (v1, v2)
+            if string[0] == 'f':
+                f = p1.__getattribute__(string[1]) * (a + b)
+                return (f, f)
+
+        width = relation[plane_orientation][edge_orientation][0]
+        height = relation[plane_orientation][edge_orientation][1]
+        thickness = relation[plane_orientation][edge_orientation][2]
+        x1, x2 = extract(relation[plane_orientation][edge_orientation][3])
+        y1, y2 = extract(relation[plane_orientation][edge_orientation][4])
+        z1, z2 = extract(relation[plane_orientation][edge_orientation][5])
+        b1 = Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x1,y1,z1))
+        b2 = Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x2,y2,z2))
+        return (b1, b2)
+
+    def gen_limits(self, point, orientation):
+        w = self.alfa + self.beta * 2
+        t = self.beta
+        h = self.alfa / 2
+        rel = {
+            'n':[w, t, h, 'y',  1],
+            's':[w, t, h, 'y', -1],
+            'e':[t, w, h, 'x',  1],
+            'w':[t, w, h, 'x', -1],
+            'u':[w, h, t, 'z',  1],
+            'd':[w, h, t, 'z', -1],
+            }
+        boxes = []
+        if orientation == 'h':
+            limits = 'nsew'
+        else:
+            limits = 'ewud'
+            rel['e'] = [t, h, w, 'x',  1]
+            rel['w'] = [t, h, w, 'x', -1]
+        for attrib in limits:
+            if point.__getattribute__(attrib):
+                local = {}
+                width       = rel[attrib][0]
+                height      = rel[attrib][1]
+                thickness   = rel[attrib][2]
+                for axis in 'xyz':
+                    local[axis] = point.__getattribute__(axis) * (self.beta + self.alfa)
+                local[rel[attrib][3]] = local[rel[attrib][3]] + (self.alfa + self.beta) / 2 * rel[attrib][4]
+                boxes.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,1.0), pos=(local['x'],local['y'],local['z'])))
+        return boxes
+
     def generate(self):
         for plane in self.graph.get_planes():
-            for p1,p2 in plane.get_edges():
-                if p1.x != p2.x:
-                    if (abs(p1.x - p2.x) - 1) % 2 == 0:
-                        shift = (self.alfa + self.beta) / 2
-                    else:
-                        shift = 0
-                    width = (abs(p1.x - p2.x) - 1) * (self.alfa + self.beta) - self.beta
-                    height = self.beta
-                    thickness = self.alfa
-                    x = min(p1.x, p2.x) * (self.alfa + self.beta) + abs(p2.x - p1.x) / 2 * (self.alfa + self.beta) + shift
-                    y1 = p1.y * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
-                    y2 = y1 + self.alfa + self.beta
-                    z = p1.z * (self.alfa + self.beta)
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x,y1,z)))
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,1.0,0.0), pos=(x,y2,z)))
-                elif p1.y != p2.y:
-                    if (abs(p1.y - p2.y) - 1) % 2 == 0:
-                        shift = (self.alfa + self.beta) / 2
-                    else:
-                        shift = 0
-                    width = self.beta
-                    height = (abs(p1.y - p2.y) - 1) * (self.alfa + self.beta) + self.beta
-                    thickness = self.alfa
-                    y = min(p1.y, p2.y) * (self.alfa + self.beta) + abs(p2.y - p1.y) / 2 * (self.alfa + self.beta) + shift
-                    x2 = p1.x * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
-                    x1 = x2 + self.alfa + self.beta
-                    z = p1.z * (self.alfa + self.beta)
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x1,y,z)))
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,1.0), pos=(x2,y,z)))
-                elif p1.z != p2.z:
-                    if (abs(p1.z - p2.z) - 1) % 2 == 0:
-                        shift = (self.alfa + self.beta) / 2
-                    else:
-                        shift = 0
-                    width = self.beta
-                    height = self.alfa
-                    thickness = (abs(p1.z - p2.z) - 1) * (self.alfa + self.beta) + self.beta
-                    z = min(p1.z, p2.z) * (self.alfa + self.beta) + abs(p2.z - p1.z) / 2 * (self.alfa + self.beta) + shift
-                    y = p1.y * (self.alfa + self.beta)
-                    x2 = p1.x * (self.alfa + self.beta) - (self.alfa + self.beta) / 2
-                    x1 = x2 + self.alfa + self.beta
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x1,y,z)))
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x2,y,z)))
+            for p1,p2, orientation in plane.get_edges():
+                w1, w2 = self.gen_walls(p1, p2, orientation, plane.orientation)
+                plane.walls.append(w1)
+                plane.walls.append(w2)
 
             for point in plane.vertices:
-                if point.n:
-                    width = self.alfa + self.beta * 2
-                    height = self.beta
-                    thickness = self.alfa
-                    x = point.x * (self.beta + self.alfa)
-                    y = point.y * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
-                    z = point.z * (self.beta + self.alfa)
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,1.0), pos=(x,y,z)))
-                if point.s:
-                    width = self.alfa + self.beta * 2
-                    height = self.beta
-                    thickness = self.alfa
-                    x = point.x * (self.beta + self.alfa)
-                    y = point.y * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
-                    z = point.z * (self.beta + self.alfa)
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,1.0), pos=(x,y,z)))
-                if point.e:
-                    width = self.beta
-                    height = self.alfa
-                    thickness = self.alfa
-                    y = point.y * (self.beta + self.alfa)
-                    x = point.x * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
-                    z = point.z * (self.beta + self.alfa)
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(1.0,0.0,0.0), pos=(x,y,z)))
-                if point.w:
-                    width = self.beta
-                    height = self.alfa
-                    thickness = self.alfa
-                    y = point.y * (self.beta + self.alfa)
-                    x = point.x * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
-                    z = point.z * (self.beta + self.alfa)
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,1.0,0.0), pos=(x,y,z)))
-                if point.u:
-                    width = self.alfa + self.beta * 2
-                    height = self.alfa
-                    thickness = self.beta
-                    y = point.y * (self.beta + self.alfa)
-                    x = point.x * (self.beta + self.alfa)
-                    z = point.z * (self.beta + self.alfa) + (self.alfa + self.beta) / 2
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,0.0), pos=(x,y,z)))
-                if point.d:
-                    width = self.alfa + self.beta * 2
-                    height = self.alfa
-                    thickness = self.beta
-                    y = point.y * (self.beta + self.alfa)
-                    x = point.x * (self.beta + self.alfa)
-                    z = point.z * (self.beta + self.alfa) - (self.alfa + self.beta) / 2
-                    plane.walls.append(Box(self.batch, width, height, thickness,color=(0.0,0.0,0.0), pos=(x,y,z)))
+                plane.walls += self.gen_limits(point, plane.orientation)
 
 class Board(pyglet.window.Window):
 
