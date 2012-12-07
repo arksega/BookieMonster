@@ -351,7 +351,8 @@ class Board(pyglet.window.Window):
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable (GL_LINE_SMOOTH)
         self.batch = pyglet.graphics.Batch()
-        self.monster = Sphere(color=(1.0, 0.0, 0.1), pos=(24.0,-12.0,0.0), radius = 4.0)
+        self.size = 8
+        self.monster = Sphere(color=(1.0, 0.0, 0.1), pos=(24.0,-12.0,0.0), radius = self.size / 2)
         self.gen_axes()
         self.walls = []
 
@@ -360,7 +361,9 @@ class Board(pyglet.window.Window):
         self.alfa = 10
         self.beta = 2
         self.gridSize = 10
-        self.map = Map3D(self.batch, [2, 0,0, 3, 0,0,
+        self.change = (self.alfa - self.size) / 2
+        self.map = Map3D(self.batch, [
+                                    2, 0,0, 3, 0,0,
                                     3,0,0,  3,1,0,
                                     3,0,0,  8,0,0,
                                     8,1,0, 3,1,0,
@@ -371,15 +374,22 @@ class Board(pyglet.window.Window):
                                     2,-4,0, 2, 0,0,
 
                                     2,0,0,  2,0,9,
-                                    -4,4,0,  -4,4,9,
-                                    -4,4,9,  0 ,4,9,
-                                    -4,4,9,  -4,0,9,
-                                    -4,4,9,  -4,8,9,
 
-                                    -2,-2,2, -6,-2,2,
-                                    -6,-2,2, -6,-2,6,
-                                    -6,-2,6, -2,-2,6,
-                                    -2,-2,6, -2,-2,2,
+                                    2,0,9,  2,4,9,
+                                    2,4,9,  -2,4,9,
+                                    -2,4,9, -2,0,9,
+                                    -2,0,9, 2,0,9,
+
+                                    2,0,9,  6,0,9,
+                                    6,0,9,  6,-4,9,
+                                    6,-4,9, 2,-4,9,
+                                    2,-4,9, 2,0,9,
+
+                                    2,-4,0,  2,-4,4,
+                                    2,-4,4,  9,-4,4,
+                                    9,-4,4,  9,-4,0,
+                                    9,-4,0,  9,-4,-4,
+                                    9,-4,-4, 2,-4,-4,
                                     ]
                        )
         for plane in self.map.graph.get_planes():
@@ -404,6 +414,7 @@ class Board(pyglet.window.Window):
         return [x, y, z]
 
     def axis_to_grid(self, pos):
+        ''' Get a float position and return de coordinate number in the grid'''
         if pos == 0:
             return 0
         shift = self.alfa / 2 + self.beta / 2
@@ -412,6 +423,10 @@ class Board(pyglet.window.Window):
         else:
             x = self.get_units(abs(pos) - shift, self.alfa + self.beta)
         return int(x * (pos / abs(pos)))
+
+    def grid_to_axis(self, grid):
+        ''' Get an int of coordinate grid and return de float position'''
+        return grid * (self.alfa + self.beta)
 
     def get_units(self, a, b):
         r = int(a / b)
@@ -424,38 +439,46 @@ class Board(pyglet.window.Window):
         if self.colliding(self.monster, self.walls):
             self.monster.moveBack()
             self.monster.stop()
-        print self.pos_to_grid(self.monster), self.monster.posX, self.monster.posY, self.monster.posZ
 
-        current_grid_monster = self.pos_to_grid(self.monster)
-        if self.grid_monster != current_grid_monster:
-            candidat = None
-            if self.active_plane_type == 'h':
-                for key in self.map.graph.planes['v'].keys():
-                    if key == current_grid_monster[1]:
-                        candidat = key
-                        self.set_plane_opacity(self.map.graph.planes['v'][candidat], 0.5)
-                    else:
-                        self.set_plane_opacity(self.map.graph.planes['v'][key], 0.1)
-                if current_grid_monster[2] != self.grid_monster[2] and candidat != None:
-                    self.set_plane_opacity(self.map.graph.planes['v'][candidat], 1.0)
+        ref = self.grid_to_axis(self.active_plane)
+        #print self.pos_to_grid(self.monster), self.monster.posX, self.monster.posY, self.monster.posZ, candidate, self.active_plane, ref
+
+        candidate = None
+        if self.active_plane_type == 'h':
+            for key in self.map.graph.planes['v'].keys():
+                ref2 = self.grid_to_axis(key)
+                if self.monster.posY + self.change >= ref2 and self.monster.posY - self.change <= ref2:
+                    candidate = key
+                    self.set_plane_opacity(self.map.graph.planes['v'][candidate], 0.5)
+                else:
+                    self.set_plane_opacity(self.map.graph.planes['v'][key], 0.1)
+            if not (self.monster.posZ + self.change >= ref and self.monster.posZ - self.change <= ref):
+                if candidate != None:
+                    self.set_plane_opacity(self.map.graph.planes['v'][candidate], 1.0)
                     self.set_plane_opacity(self.map.graph.planes['h'][self.active_plane], 0.1)
-                    self.active_plane = candidat
+                    self.active_plane = candidate
                     self.active_plane_type = 'v'
+                else:
+                    self.monster.moveBack()
+                    self.monster.stop()
 
-            elif self.active_plane_type == 'v':
-                for key in self.map.graph.planes['h'].keys():
-                    if key == current_grid_monster[2]:
-                        candidat = key
-                        self.set_plane_opacity(self.map.graph.planes['h'][candidat], 0.5)
-                    else:
-                        self.set_plane_opacity(self.map.graph.planes['h'][key], 0.1)
-                if current_grid_monster[1] != self.grid_monster[1] and candidat != None:
-                    self.set_plane_opacity(self.map.graph.planes['h'][candidat], 1.0)
+        elif self.active_plane_type == 'v':
+            for key in self.map.graph.planes['h'].keys():
+                ref2 = self.grid_to_axis(key)
+                if self.monster.posZ + self.change >= ref2 and self.monster.posZ - self.change <= ref2:
+                    candidate = key
+                    self.set_plane_opacity(self.map.graph.planes['h'][candidate], 0.5)
+                else:
+                    self.set_plane_opacity(self.map.graph.planes['h'][key], 0.1)
+            if not (self.monster.posY + self.change >= ref and self.monster.posY - self.change <= ref):
+                if candidate != None:
+                    self.set_plane_opacity(self.map.graph.planes['h'][candidate], 1.0)
                     self.set_plane_opacity(self.map.graph.planes['v'][self.active_plane], 0.1)
-                    self.active_plane = candidat
+                    self.active_plane = candidate
                     self.active_plane_type = 'h'
-
-            self.grid_monster = current_grid_monster
+                else:
+                    self.monster.moveBack()
+                    self.monster.stop()
 
     def gen_axes(self):
         glLineWidth(2)
