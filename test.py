@@ -153,10 +153,11 @@ class Plane(Graph):
 
 class Object3D(object):
 
-    def __init__(self, width, height, thickness, color = (0.0, 0.0, 0.0), pos = (0.0, 0.0, 0.0)):
+    def __init__(self, width, height, thickness, color = (0.0, 0.0, 0.0, 1.0), pos = (0.0, 0.0, 0.0)):
         self.red    = color[0]
         self.green  = color[1]
         self.blue   = color[2]
+        self.alpha  = color[3]
         self.posX   = pos[0]
         self.posY   = pos[1]
         self.posZ   = pos[2]
@@ -165,7 +166,7 @@ class Object3D(object):
         self.thickness = thickness
 
 class Box(Object3D):
-    def __init__(self, batch, width, height, thickness, color = (0.0, 0.0, 0.0), pos = (0.0, 0.0, 0.0)):
+    def __init__(self, batch, width, height, thickness, color = (0.0, 0.0, 0.0, 1.0), pos = (0.0, 0.0, 0.0)):
         super(Box, self).__init__(width, height, thickness, color, pos)
         self.x1 = self.posX + width / 2
         self.y1 = self.posY + height / 2
@@ -205,7 +206,7 @@ class Box(Object3D):
         )
 
 class Sphere(Object3D):
-    def __init__(self, radius = 5.0, slices = 12, stacks = 12, color = (0.0, 0.0, 0.0), pos = (0.0, 0.0, 0.0)):
+    def __init__(self, radius = 5.0, slices = 12, stacks = 12, color = (0.0, 0.0, 0.0, 1.0), pos = (0.0, 0.0, 0.0)):
         super(Sphere, self).__init__(radius * 2, radius * 2, radius * 2, color, pos)
         self.radius = radius
         self.slices = slices
@@ -225,7 +226,8 @@ class Sphere(Object3D):
         return str((self.posX, self.posY, self.posZ))
 
     def draw(self):
-        glColor3f(self.red, self.green, self.blue)
+
+        glColor4f(self.red, self.green, self.blue,self.alpha)
         #gluQuadricDrawStyle(self.q,GLU_LINE)
         gluQuadricDrawStyle(self.q,GLU_FILL)
         glPushMatrix()
@@ -349,11 +351,11 @@ class Map3D(object):
     def generate(self):
         for plane in self.graph.get_planes():
             if plane.orientation == 'h':
-                color_limit = (0.0, 0.0, 1.0)
-                color_book  = (0.0, 1.0, 1.0)
+                color_limit = (0.0, 0.0, 1.0, 1.0)
+                color_book  = (0.0, 1.0, 1.0, 0.0)
             else:
-                color_limit = (0.0, 0.8, 0.0)
-                color_book  = (1.0, 0.8, 0.0)
+                color_limit = (0.0, 0.8, 0.0, 1.0)
+                color_book  = (1.0, 0.8, 0.0, 0.0)
 
             for p1,p2, orientation in plane.get_edges():
                 plane.walls += self.gen_walls(p1, p2, orientation, plane.orientation, color_limit)
@@ -367,7 +369,7 @@ class Board(pyglet.window.Window):
 
     def __init__(self):
         pyglet.window.Window.__init__(self, resizable=True)
-        self.eye   = [9.0, -10.0, 10.0]
+        self.eye   = [-9.0, -10.0, 10.0]
         self.focus = [0.0, 0.0, 0.0]
         self.up    = [0.0, 0.0, 1.0]
         self.width = 1024
@@ -384,11 +386,18 @@ class Board(pyglet.window.Window):
         glEnable (GL_LINE_SMOOTH)
         self.batch = pyglet.graphics.Batch()
         self.size = 8
-        self.monster = Sphere(color=(1.0, 0.0, 0.1), pos=(24.0,-12.0,0.0), radius = self.size / 2)
+        self.monster = Sphere(color=(1.0, 0.0, 0.1, 1.0), pos=(24.0,-12.0,0.0), radius = self.size / 2)
         self.gen_axes()
         self.walls = []
 
         self.alpha = 0.0
+        self.label = pyglet.text.Label('0',
+                                       font_name='Times New Roman',
+                                       font_size=50,
+                                       x=-150,
+                                       y=10,
+                                       batch=self.batch,
+                                       color=(0,0,0,255))
         self.perspective = False
         self.alfa = 10
         self.beta = 2
@@ -424,9 +433,13 @@ class Board(pyglet.window.Window):
                                     9,-4,-4, 2,-4,-4,
                                     ]
                        )
+
+        self.total_books = 0
         for plane in self.map.graph.get_planes():
             self.walls += plane.walls
-            print plane.orientation, len(plane.books), plane.books
+            self.total_books += len(plane.books)
+        self.eaten_books = 0
+        self.first_update = True
 
         self.grid_monster = self.pos_to_grid(self.monster)
         self.active_plane_type = 'h'
@@ -439,6 +452,9 @@ class Board(pyglet.window.Window):
     def set_plane_opacity(self, plane, opacity):
         for wall in plane.walls:
             wall.vertex_list.colors = (wall.vertex_list.colors[:3] + [opacity]) * 36
+
+        for book in plane.books:
+            book.alpha = opacity
 
     def pos_to_grid(self, obj):
         x = self.axis_to_grid(obj.posX)
@@ -469,9 +485,24 @@ class Board(pyglet.window.Window):
 
     def update(self, dt):
         self.monster.moveForward()
-        if self.colliding(self.monster, self.walls):
+        if self.colliding(self.monster, self.walls) != None:
             self.monster.moveBack()
             self.monster.stop()
+
+        if self.first_update:
+            self.eaten_books -= 1
+            self.total_books -= 1
+            self.first_update = False
+
+        for plane in self.map.graph.get_planes():
+            book = self.colliding(self.monster, plane.books)
+            if book != None:
+                plane.books.remove(book)
+                self.eaten_books += 1
+                self.label.text = str(self.eaten_books * 100)
+
+        if self.total_books == self.eaten_books:
+            self.label.text = "Winner!!"
 
         ref = self.grid_to_axis(self.active_plane)
         #print self.pos_to_grid(self.monster), self.monster.posX, self.monster.posY, self.monster.posZ, candidate, self.active_plane, ref
@@ -622,7 +653,7 @@ class Board(pyglet.window.Window):
 
         self.initView()
         return pyglet.event.EVENT_HANDLED
-    
+
     def colliding(self, object1, objectList):
         for object2 in objectList:
             minDistanceX = object1.width     / 2 + object2.width / 2
@@ -634,8 +665,8 @@ class Board(pyglet.window.Window):
             if  distanceX < minDistanceX \
                     and  distanceY < minDistanceY \
                     and  distanceZ < minDistanceZ:
-                return True
-        return False
+                return object2
+        return None
 
 if __name__ == '__main__':
     win = Board()
