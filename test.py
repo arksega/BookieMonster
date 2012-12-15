@@ -1,6 +1,7 @@
 import pyglet
 from pyglet.gl import *
 from pyglet.window import key
+from OpenGL.GLUT import *
 
 class Point(object):
     def __init__(self, x, y, z):
@@ -164,6 +165,61 @@ class Object3D(object):
         self.width = width
         self.height = height
         self.thickness = thickness
+
+class ImportedObject3D(Object3D):
+
+    def __init__(self, file_name, scale, color = (0.0, 0.0, 0.0, 1.0), pos = (0.0, 0.0, 0.0)):
+        super(ImportedObject3D, self).__init__(scale, scale, scale, color, pos)
+        self.vertices = []
+        self.faces = []
+        self.normals = []
+        self.scale = scale
+        self.load_file(file_name)
+
+    def load_file(self, file_name):
+        file = open(file_name)
+        f = 0
+        for line in file.readlines():
+            if line[0:2] == 'v ':
+                self.vertices += [float(x) * self.scale for x in line[2:].split()]
+            elif line[0:2] == 'vn':
+                self.normals += [float(x) * self.scale for x in line[2:].split()]
+            elif line[0:2] == 'f ':
+                self.faces += [x for x in line[2:].split()]
+                f += 1
+
+        for n in range(0, len(self.vertices), 3):
+            self.vertices[n] = self.vertices[n] + self.posX
+            self.vertices[n+1] = self.vertices[n+1] + self.posY
+            self.vertices[n+2] = self.vertices[n+2] + self.posZ
+        colors = (self.red, self.green, self.blue, self.alpha) * (len(self.vertices) / 3)
+        self.vertices_vertex_list = pyglet.graphics.vertex_list(len(self.vertices) / 3,
+                                                                ('v3f', self.vertices),
+                                                                ('c4f', colors)
+                                                                )
+        real_faces = []
+        real_normals = []
+        for vertex in self.faces:
+            vertex, normal = [int(n) for n in vertex.split('//')]
+            vertex -= 1
+            normal -= 1
+            for n in range(3):
+                real_faces.append(self.vertices[vertex * 3 + n])
+                real_normals.append(self.normals[normal * 3 + n])
+        colors = (self.red, self.green, self.blue, self.alpha) * (len(real_faces) / 3)
+        self.faces_vertex_list = pyglet.graphics.vertex_list(len(real_faces) / 3,
+                                                                ('v3f', real_faces),
+                                                                ('n3f', real_normals),
+                                                                ('c4f', colors)
+                                                                )
+        print self.faces_vertex_list.normals
+
+
+    def draw_points(self):
+        self.vertices_vertex_list.draw(GL_POINTS)
+
+    def draw_faces(self):
+        self.faces_vertex_list.draw(GL_TRIANGLES)
 
 class Box(Object3D):
     def __init__(self, batch, width, height, thickness, color = (0.0, 0.0, 0.0, 1.0), pos = (0.0, 0.0, 0.0)):
@@ -377,6 +433,7 @@ class Board(pyglet.window.Window):
         self.currentParameter = self.eye
         self.speed = 1.0
         #One-time GL setup
+        glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH)
         glClearColor(1, 1, 1, 1)
         glColor3f(1, 0, 0)
         glEnable(GL_DEPTH_TEST)
@@ -384,6 +441,17 @@ class Board(pyglet.window.Window):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable (GL_LINE_SMOOTH)
+        glShadeModel(GL_SMOOTH)
+
+        def vec(*args):
+            return (GLfloat * len(args))(*args)
+        #glEnable(GL_LIGHTING)
+        self.lights = False
+        glEnable(GL_LIGHT0)
+        glLightfv(GL_LIGHT0, GL_POSITION, vec(-150, -150, 150, 0))
+        glLightfv(GL_LIGHT0, GL_SPECULAR, vec(.5, .5, .5, .5))
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(0.1, 0.1, .1, 1.0))
+
         self.batch = pyglet.graphics.Batch()
         self.size = 8
         self.monster = Sphere(color=(1.0, 0.0, 0.1, 1.0), pos=(24.0,-12.0,0.0), radius = self.size / 2)
@@ -445,6 +513,8 @@ class Board(pyglet.window.Window):
         self.active_plane_type = 'h'
         self.active_plane = 0
         self.set_plane_opacity(self.map.graph.planes['h'][0], 1.0)
+
+        self.susan = ImportedObject3D('susan.obj', 20, pos=(-50.0, -50.0, 0.0))
 
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
@@ -583,10 +653,13 @@ class Board(pyglet.window.Window):
 
         self.batch.draw()
         self.monster.draw()
+        #self.susan.draw_points()
+        self.susan.draw_faces()
         for plane in self.map.graph.get_planes():
             for book in plane.books:
                 book.draw()
-    
+        glFlush()
+
     def on_resize(self, width, height):
         glViewport(0,0,self.width,self.height)
         glMatrixMode(GL_PROJECTION)
@@ -609,6 +682,13 @@ class Board(pyglet.window.Window):
         glLoadIdentity()
         if symbol == key.P:
             self.perspective = not self.perspective
+        elif symbol == key.L:
+            if self.lights:
+                self.lights = False
+                glDisable(GL_LIGHTING)
+            else:
+                self.lights = True
+                glEnable(GL_LIGHTING)
         elif symbol == key.X:
             self.currentParameter = self.eye
             self.speed = 10.0
