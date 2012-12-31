@@ -5,6 +5,7 @@ from OpenGL.GLUT import *
 from random import choice
 from copy import copy, deepcopy
 from operator import add, sub, methodcaller
+from event import Event
 
 class Point(object):
 
@@ -38,9 +39,9 @@ class Point(object):
         return len(self.getCommonAxes(other)) == 2
 
     def getOrientation(self, other):
+        assert isinstance(other, Point)
         if self.isAligned(other):
             return self.getDifferentAxes(other)[0]
-        print self, other
         raise ValueError('Points not aligned')
 
     def _difference(self, other):
@@ -95,12 +96,13 @@ class Vertex(Point):
     }
 
     def __repr__(self):
-        return 'Vertex' + repr((self.x, self.y, self.z, self.n, self.s, self.e, self.w, self.u, self.d))
+        #return 'Vertex' + repr((self.x, self.y, self.z, self.n, self.s, self.e, self.w, self.u, self.d))
+        return 'Vertex' + repr((self.x, self.y, self.z))
         
     def __str__(self):
         return self.__repr__()
 
-    def __init__(self, x, y, z):
+    def __init__(self, x=0, y=0, z=0):
         super(Vertex, self).__init__(x, y, z)
         self.n, self.s, self.e, self.w, self.u, self.d = [True] * 6
 
@@ -119,18 +121,20 @@ class Speed(Point):
         ('z', -1) : 'd',
     }
 
+    def __init__(self, x=0, y=0, z=0):
+        super(Speed, self).__init__(x, y, z)
+        self.axis = None
+        self.onChange = Event()
+
+    def __repr__(self):
+        return 'Speed' + repr((self.x, self.y, self.z))
+
     def set(self, axis, val):
         self.axis = axis
         p = Point()
         setattr(p, axis, val)
         self.setAxes(p)
-
-    def __init__(self, x=0, y=0, z=0):
-        super(Speed, self).__init__(x, y, z)
-        self.axis = None
-
-    def __repr__(self):
-        return 'Speed' + repr((self.x, self.y, self.z))
+        self.onChange()
 
     def getDirection(self):
         if self.axis != None:
@@ -196,7 +200,6 @@ class Graph(object):
 
     def get_all_relations(self):
         full = dict()
-        print len(self.relations)
         for i in self.relations:
             for j in self.relations[i]:
                 if not full.has_key(j):
@@ -296,8 +299,8 @@ class Object3D(Point):
 
 class ImportedObject3D(Object3D):
 
-    def __init__(self, file_name, scale, color = (0.0, 0.0, 0.0, 1.0), pos = (0, 0, 0)):
-        super(ImportedObject3D, self).__init__(scale, scale, scale, color, pos)
+    def __init__(self, file_name, scale, **kwargs):
+        super(ImportedObject3D, self).__init__(scale, scale, scale, **kwargs)
         self.vertices = []
         self.faces = []
         self.normals = []
@@ -352,8 +355,8 @@ class ImportedObject3D(Object3D):
         self.faces_vertex_list.colors = (self.faces_vertex_list.colors[:3] + [opacity]) * len(self.faces)
 
 class Box(Object3D):
-    def __init__(self, batch, width, height, thickness, color = (0.0, 0.0, 0.0, 1.0), pos = (0, 0, 0)):
-        super(Box, self).__init__(width, height, thickness, color, pos)
+    def __init__(self, batch, width, height, thickness, **kwargs):
+        super(Box, self).__init__(width, height, thickness, **kwargs)
         self.x1 = self.x + width / 2
         self.y1 = self.y + height / 2
         self.z1 = self.z + thickness / 2
@@ -399,6 +402,15 @@ class Grid(object):
 
 class GridObject(ImportedObject3D, Grid):
 
+    def __init__(self, grid = Point(), **kwargs):
+        if not isinstance(grid, Point):
+            raise ValueError('grid parameter should be Point instance')
+        pos = [x * self.unit for x in grid.getAxes()]
+        super(GridObject, self).__init__(kwargs.pop('file_name'), kwargs.pop('scale'), pos=pos, **kwargs)
+        self.grid = deepcopy(grid)
+
+class MobileObject(GridObject):
+
     direction_speed = {
         'e' : ['x',  1],
         'w' : ['x', -1],
@@ -408,17 +420,17 @@ class GridObject(ImportedObject3D, Grid):
         'd' : ['z', -1],
     }
 
-    def __init__(self, file_name, scale, color = (0.0, 0.0, 0.0, 1.0), grid = Point(0, 0, 0)):
-        if not isinstance(grid, Point):
-            raise ValueError('grid parameter should be Point instance')
-        pos = [x * self.unit for x in grid.getAxes()]
-        super(GridObject, self).__init__(file_name, scale, color, pos)
+    pendingAction = None
+    connections = None
+
+    def __init__(self, grid = Point(), **kwargs):
+        super(MobileObject, self).__init__(grid, **kwargs)
         self.grid = deepcopy(grid)
         self.proxGrid = deepcopy(grid)
-        self.target = deepcopy(grid)
+        #self.target = deepcopy(grid)
         self.origin = deepcopy(grid)
         self.speed = Speed()
-        self.pendingAction = None
+        self.noMoreTarget = Event()
 
     def setVertices(self, vertices):
         self.vertices = vertices
@@ -426,7 +438,6 @@ class GridObject(ImportedObject3D, Grid):
 
     def updateConnections(self):
         self.connections = self.vertices[self.origin].keys() + [self.origin]
-        print 'connected', self.connections
 
     def updateGrids(self):
         proxGrid = self.calcProxGrid()
@@ -440,7 +451,6 @@ class GridObject(ImportedObject3D, Grid):
                 proxGrid.disableLimits(axis)
                 self.proxGrid = proxGrid
 
-            print ('ChangeProx!:', self.proxGrid, self.getAxes())
         elif self.isCentered():
             if self.grid != self.proxGrid:
                 '''Update main grid'''
@@ -448,14 +458,18 @@ class GridObject(ImportedObject3D, Grid):
                 if hasattr(self, 'connections') and self.grid in self.connections:
                     self.origin = deepcopy(self.proxGrid)
                     self.updateConnections()
+                    if hasattr(self, 'path'):
+                        if self.path != []:
+                            self.target = self.path.pop(0)
+                        else:
+                            self.noMoreTarget(self)
                     if self.pendingAction:
                         self.speed.set(*self.pendingAction)
                         self.pendingAction = None
-                print ('ChangeMain!:', self.grid, self.getAxes())
             self.verifySpeed()
 
     def calcProxGrid(self):
-        proxGrid = Vertex(0, 0, 0)
+        proxGrid = Vertex()
         for axis in self.axes:
             pos = getattr(self, axis)
             if pos == 0:
@@ -478,13 +492,27 @@ class GridObject(ImportedObject3D, Grid):
         if self.speed.direction and getattr(self.grid, self.speed.direction):
             self.stop()
 
+    def calcTarget(self):
+        print 'calculating:', self.connections, self.origin, self.grid
+        if self.speed.axis == None:
+            return None
+        for vertex in self.connections:
+            try:
+                if self.grid.isBetween(self.origin, vertex):
+                    return vertex
+            except:
+                pass
+        raise AttributeError('Target not found')
+
     def updateTarget(self, target):
+        print 'Target', target
         axis = self.grid.getOrientation(target)
         targetVal = getattr(target,    axis)
         localVal  = getattr(self.grid, axis)
         self.speed.set(axis, 1 if localVal < targetVal else -1)
         self.origin = self.target
-        self.target = target
+
+    target = property(calcTarget, updateTarget)
 
     def moveForward(self):
         self.move(add)
@@ -504,11 +532,9 @@ class GridObject(ImportedObject3D, Grid):
         self.speed.axis = None
 
     def setDirection(self, direction):
-        print 'dir', direction
         if not getattr(self.proxGrid, direction):
             axis = self.direction_speed[direction][0]
             val  = self.direction_speed[direction][1]
-            print 'axis', axis
             if self.speed.axis == None or self.speed.axis == axis:
                 self.speed.set(axis, val)
             else:
@@ -600,7 +626,7 @@ class Map3D(object):
     def gen_books(self, p1, p2, color):
         books = []
         for point in p1.range(p2):
-            books.append(GridObject('sphere.obj', 4, color = color, grid = point))
+            books.append(GridObject(file_name='sphere.obj', scale=4, color = color, grid = point))
         return books
 
     def generate(self):
@@ -707,24 +733,32 @@ class Board(pyglet.window.Window):
             self.total_books += len(plane.books)
         self.eaten_books = 0
         self.first_update = True
+        self.all_relations = self.map.graph.get_all_relations()
         
         vertex = self.map.graph.vertices[Point(2, 0, 0)]
-        self.all_relations = self.map.graph.get_all_relations()
-        self.monster = GridObject('sphere.obj', self.size, (1.0, 0.0, 0.1, 1.0), vertex)
+        self.monster = MobileObject(vertex, file_name='sphere.obj', scale=self.size, color=(1.0, 0.0, 0.1, 1.0))
         self.monster.setVertices(self.all_relations)
+        self.monster.speed.onChange += self.resetBadGuysStep
 
         self.active_plane_type = 'h'
         self.active_plane = 0
         self.set_plane_opacity(self.map.graph.planes['h'][0], 1.0)
 
         self.susan = ImportedObject3D('susan.obj', 20, pos=(-50.0, -50.0, 0.0))
-        self.badGuy = []
+        self.badGuys = []
         vertex = self.map.graph.vertices[Point(9,0,0)]
-        self.badGuy.append(GridObject('bad.obj', 3.0, (1.0, 0.0, 0.0, 1.0), vertex))
-        self.badGuy[0].setVertices(self.all_relations)
+        self.badGuys.append(MobileObject(vertex, file_name='bad.obj', scale=3.0, color=(1.0, 0.0, 0.0, 1.0)))
+        for badguy in self.badGuys:
+            badguy.setVertices(self.all_relations)
+            self.setBadGuyStep(badguy)
+            badguy.noMoreTarget = self.setBadGuyStep
 
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+
+    def resetBadGuysStep(self):
+        for badguy in self.badGuys:
+            badguy.path = []
 
     def set_plane_opacity(self, plane, opacity):
         for wall in plane.walls:
@@ -738,7 +772,6 @@ class Board(pyglet.window.Window):
 
     def badGuyStepRandom(self, guy):
         '''random'''
-        guy.updateGrids()
         if guy.grid == guy.target:
             vertices = copy(guy.connected)
             print 'Keys', vertices
@@ -748,32 +781,25 @@ class Board(pyglet.window.Window):
 
     def badGuyStepNormal(self, guy):
         '''normal'''
-        guy.updateGrids()
-        currentPos = guy.grid
-        edges = deepcopy(self.all_relations)
-
-        if guy.grid == guy.target:
-            if not guy.grid == self.monster.grid:
-                print 'Points2', guy.grid, self.monster.grid, self.monster
-                verticesConnected = edges[guy.grid]
-                path = self.generatePath(guy.grid, copy(self.monster.grid))
-                print 'Path:', path
-                guy.updateTarget(path[0])
-            else:
-                guy.stop()
+        if guy.grid != self.monster.grid:
+            print 'Points2', guy.origin, self.monster.origin, self.monster
+            vertices = copy(guy.connections)
+            path = self.generatePath(guy.origin, copy(self.monster.origin))
+            print 'Path1:', path
+            target = self.monster.target
+            if None != target:
+                path.append(target)
+            print 'Path2:', path
+            guy.target = path.pop(0)
+            guy.path = path
+        else:
+            guy.stop()
 
     def generatePath(self, source, destination):
         edges = deepcopy(self.all_relations)
-        print edges
         visited = []
         source.parent = None
         frontier = [source]
-        if not destination in edges.keys():
-            near = self.getNearVertices(destination)
-            print 'Near:',near
-            if source in near:
-                near.remove(source)
-            destination = near[0]
         print 'Points:', source, destination
         while len(frontier) != 0:
             print 'Frontier', frontier
@@ -793,39 +819,14 @@ class Board(pyglet.window.Window):
                     frontier.append(son)
         raise ValueError("Path no found")
 
-    def getNearVertices(self, grid):
-        vertices = list(self.map.graph.vertices)
-        edges = deepcopy(self.all_relations)
-        aligned = []
-        for vertex in vertices:
-            if vertex.isAligned(grid):
-                aligned.append(vertex)
-        near = []
-        print 'Aligned', aligned
-        near.append(self.getNearVertex(grid, aligned))
-        print 'Near1', near[0]
-        candidates = edges[near[0]].keys()
-        candidates = list(set(aligned).intersection(set(candidates)))
-        for vertex in candidates:
-            if grid.isBetween(near[0], vertex):
-                near.append(vertex)
-                break
-        return near
-
-    def getNearVertex(self, grid, vertexList):
-        distances = dict()
-        for vertex in vertexList:
-            distances[vertex -grid] = vertex
-        return distances[sorted(distances.keys())[0]]
-
     def update(self, dt):
 
         self.monster.moveForward()
         self.monster.updateGrids()
 
-        for badGuy in self.badGuy:
-            self.setBadGuyStep(badGuy)
+        for badGuy in self.badGuys:
             badGuy.moveForward()
+            badGuy.updateGrids()
 
         if self.first_update:
             self.eaten_books -= 1
@@ -882,8 +883,7 @@ class Board(pyglet.window.Window):
 
         self.batch.draw()
         self.monster.draw_faces()
-        for guy in self.badGuy:
-            guy.draw_faces()
+        [guy.draw_faces() for guy in self.badGuys]
         #self.susan.draw_points()
         self.susan.draw_faces()
         for plane in self.map.graph.get_planes():
