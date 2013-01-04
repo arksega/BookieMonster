@@ -34,12 +34,16 @@ class Point(object):
             tot += abs(getattr(self, axis) - getattr(other, axis))
         return tot
 
+    def __iter__(self):
+        return iter([self])
+
     def isAligned(self, other):
         return len(self.getCommonAxes(other)) == 2
 
     def getOrientation(self, other):
         assert isinstance(other, Point)
-        if self.isAligned(other):
+        axes = self.getDifferentAxes(other)
+        if len(axes) == 1:
             return self.getDifferentAxes(other)[0]
         raise ValueError('Points not aligned', self, other)
 
@@ -90,7 +94,7 @@ class Point(object):
 class Vertex(Point):
 
     axis_limits = {
-        'x': 'we',
+        'x': 'ew',
         'y': 'ns',
         'z': 'ud',
     }
@@ -104,10 +108,19 @@ class Vertex(Point):
     def __init__(self, x=0, y=0, z=0):
         super(Vertex, self).__init__(x, y, z)
         self.n, self.s, self.e, self.w, self.u, self.d = [True] * 6
+        self.plane = Point(None, None, None)
 
     def disableLimits(self, axis):
         for limit in self.axis_limits[axis]:
             setattr(self, limit, False)
+
+    def syncLimits(self, other):
+        axis = self.getOrientation(other)
+        vmin, vmax = self, other
+        if getattr(self, axis) > getattr(other, axis):
+            vmin, vmax = vmax, vmin
+        for vertex, limit in zip((vmin, vmax), self.axis_limits[axis]):
+            setattr(vertex, limit, False)
 
 
 class Speed(Point):

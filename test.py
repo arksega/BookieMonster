@@ -6,73 +6,64 @@ from random import choice
 from copy import copy, deepcopy
 from event import Event
 from grid import *
+from collections import defaultdict
+
+
+class _Nodes(dict):
+
+    def __getitem__(self, item):
+        assert isinstance(item, Point)
+        item = Vertex(*item.getAxes())
+        return self.setdefault(item, item)
+
+
+class _DictList(dict):
+
+    def __setitem__(self, index, val):
+        l = []
+        l += val
+        dict.__setitem__(self, index, l)
+
+    def __getitem__(self, index):
+        return self.setdefault(index, [])
+
+    def __add__(self, other):
+        edges = deepcopy(self)
+        for key, val in other.listing():
+            edges[key] += val
+        return edges
+
+    def listing(self):
+        l = []
+        for key, vals in self.items():
+            for val in vals:
+                l.append((key, val))
+        return l
+
 
 class Graph(object):
     def __init__(self):
-        self.relations = dict()
-        self.vertices = dict()
+        self.edge = _DictList()
+        self._edge = _DictList()
+        self.node = _Nodes()
 
     def __repr__(self):
         string = 'Vertices:\n'
-        for v in self.vertices:
-            string += str(v) + '\n'
+        for v in self.node:
+            string += '\t' + str(v) + '\n'
         return string
 
-    def get_orientation(self, a, b):
-        if   a.y == b.y and a.z == b.z:
-            return 'h'
-        elif a.z == b.z and a.x == b.x:
-            return 'a'
-        elif a.x == b.x and a.y == b.y:
-            return 'v'
-        raise ValueError('Vertices not alligned')
-
-    def get_stored_vertex(self, vertex):
-        if not vertex in self.vertices:
-            self.vertices[vertex] = vertex
-        return self.vertices[vertex]
-
-    def update_limits(self, a, b, orientation):
-        relation = {
-            'h':'xewud',
-            'a':'ynsud',
-            'v':'zudns',
-            }
-        def updater_limits(a,b,param):
-            if a.__getattribute__(param[0]) < b.__getattribute__(param[0]):
-                a.__setattr__(param[1], False)
-                b.__setattr__(param[2], False)
-            else:
-                a.__setattr__(param[2], False)
-                b.__setattr__(param[1], False)
-
-        updater_limits(a, b, relation[orientation])
-
-    def add_edge(self, a ,b):
-        if a == b:
-            raise ValueError('No edges between same vertex')
-
-        a = self.get_stored_vertex(a)
-        b = self.get_stored_vertex(b)
-
-        if not self.relations.has_key(a):
-            self.relations[a] = dict()
-
-        orientation = self.get_orientation(a, b)
-        self.relations[a][b] = orientation
-        self.update_limits(a, b, orientation)
+    def add_edge(self, a, b):
+        a = self.node[a]
+        b = self.node[b]
+        a.syncLimits(b)
+        self.edge[a] += b
+        self._edge[b] += a
 
     def get_all_relations(self):
-        full = dict()
-        for i in self.relations:
-            for j in self.relations[i]:
-                if not full.has_key(j):
-                    full[j] = dict()
-                if not full.has_key(i):
-                    full[i] = dict()
-                full[j][i] = self.relations[i][j]
-                full[i][j] = self.relations[i][j]
-        return full
+        if not hasattr(self, 'global_edge'):
+            self.global_edge = self.edge + self._edge
+        return self.global_edge
 
     def load_points(self, points):
         if len(points) % 6 != 0:
@@ -83,74 +74,75 @@ class Graph(object):
             self.add_edge(p1, p2)
 
     def get_edges(self):
-        for i in self.relations:
-            for j in self.relations[i]:
-                yield (i, j, self.relations[i][j])
+        return self.edge.listing()
+
+    def get_neighbors(self, vertex):
+        return (self.edge + self._edge)[vertex]
+
 
 class Map(Graph):
+
+    edge_plane = {
+        'x': 'yz',
+        'y': 'z',
+        'z': 'y',
+    }
+
     def __init__(self):
         super(Map, self).__init__()
-        self.planes = dict()
-        self.planes['v'] = dict()
-        self.planes['h'] = dict()
+        self.plane = defaultdict(Plane)
 
-    def add_planes(self):
+    def gen_planes(self):
 
-        def add_plane_v(a, b, orientation):
-            if not isinstance(self.planes['v'].get(a.y, None), Plane):
-                self.planes['v'][a.y] = Plane('v')
-            self.planes['v'][a.y].add_edge(a, b)
+        for key, value in self.edge.listing():
+            eaxis = key.getOrientation(value)
+            paxes = self.edge_plane[eaxis]
+            for paxis in paxes:
+                num = getattr(key, paxis)
+                name = paxis + str(num)
+                self.plane[name].add_edge(key, value)
+                self.plane[name].axis = paxis
+                self.plane[name].num = num
 
-        def add_plane_h(a, b, orientation):
-            if not isinstance(self.planes['h'].get(a.z, None), Plane):
-                self.planes['h'][a.z] = Plane('h')
-            self.planes['h'][a.z].add_edge(a, b)
+        blackList = []
+        for name, plane in self.plane.items():
+            if len(plane.node) > 2:
+                for vertex in plane.node.values():
+                    vertex = self.node[vertex]
+                    setattr(vertex.plane, plane.axis, plane.num)
+            else:
+                blackList.append(name)
 
-        for a in self.relations:
-            for b in self.relations[a]:
-                orientation = self.relations[a][b]
-
-                if orientation == 'v':
-                    add_plane_v(a, b, orientation)
-                if orientation == 'a':
-                    add_plane_h(a, b, orientation)
-                if orientation == 'h':
-                    add_plane_v(a, b, orientation)
-                    add_plane_h(a, b, orientation)
-
-        for plane in self.planes['v'].keys():
-            valid = False
-            for vertex in self.planes['v'][plane].vertices:
-                if not vertex.u or not vertex.d:
-                    valid = True
-            if not valid:
-                self.planes['v'].pop(plane)
-
-        for plane in self.planes['h'].keys():
-            valid = False
-            for vertex in self.planes['h'][plane].vertices:
-                if not vertex.n or not vertex.s:
-                    valid = True
-            if not valid:
-                self.planes['h'].pop(plane)
+        for name in blackList:
+            del self.plane[name]
 
     def get_planes(self):
-        return self.planes['h'].values() + self.planes['v'].values()
+        return self.plane.values()
 
     def load_points(self, points):
         super(Map, self).load_points(points)
-        self.add_planes()
+        self.gen_planes()
+
 
 class Plane(Graph):
 
-    def __init__(self, orientation):
+    def __init__(self):
         super(Plane, self).__init__()
         self.walls = []
         self.books = []
-        self.orientation = orientation
+        self.axis = None
+        self.num = None
+
+    def __repr__(self):
+        string = 'Axis:\t' + str(self.axis) + '\n'
+        string += 'Num:\t' + str(self.num) + '\n'
+        string += super(Plane, self).__repr__()
+        return string
+
 
 class Map3D(object):
-    def __init__(self, batch, points, alfa = 10, beta = 2):
+
+    def __init__(self, batch, points, alfa=10, beta=2):
         self.alfa = alfa
         self.beta = beta
         self.batch = batch
@@ -160,24 +152,24 @@ class Map3D(object):
         self.books = []
         self.generate()
 
-    def gen_walls(self, p1, p2, edge_orientation, plane_orientation, color):
-        orientation_axis = {'h':'x', 'v':'z', 'a':'y'}
+    def gen_walls(self, p1, p2, plane_axis, color):
         a = self.alfa
         b = self.beta
-        param2 = p1.__getattribute__(orientation_axis[edge_orientation])
-        param1 = p2.__getattribute__(orientation_axis[edge_orientation])
+        edge_axis = p1.getOrientation(p2)
+        param2 = getattr(p1, edge_axis)
+        param1 = getattr(p2, edge_axis)
         shift = (a + b) / 2 if (abs(param1 - param2) - 1) % 2 == 0 else 0
         c = (abs(param1 - param2) - 1) * (a + b) + b
         m = min(param1, param2) * (a + b) + abs(param1 - param2) / 2 * (a + b) + shift
         relation = {
-            'h':{
-                'h':[c, b, a/2,  'm', 'vy', 'fz'],
-                'a':[b, c, a/2, 'vx',  'm', 'fz'],
-                },
-            'v':{
-                'v':[b, a/2, c, 'vx', 'fy',  'm'],
-                'h':[c, a/2, b,  'm', 'fy', 'vz'],
-                }
+            'z': {
+                 'x': [c, b, a / 2,  'm', 'vy', 'fz'],
+                 'y': [b, c, a / 2, 'vx',  'm', 'fz'],
+                 },
+            'y': {
+                 'z': [b, a / 2, c, 'vx', 'fy',  'm'],
+                 'x': [c, a / 2, b,  'm', 'fy', 'vz'],
+                 }
             }
 
         def extract(string):
@@ -191,30 +183,30 @@ class Map3D(object):
                 f = p1.__getattribute__(string[1]) * (a + b)
                 return (f, f)
 
-        width = relation[plane_orientation][edge_orientation][0]
-        height = relation[plane_orientation][edge_orientation][1]
-        thickness = relation[plane_orientation][edge_orientation][2]
-        x1, x2 = extract(relation[plane_orientation][edge_orientation][3])
-        y1, y2 = extract(relation[plane_orientation][edge_orientation][4])
-        z1, z2 = extract(relation[plane_orientation][edge_orientation][5])
-        b1 = Box(self.batch, width, height, thickness, color = color, pos = (x1,y1,z1))
-        b2 = Box(self.batch, width, height, thickness, color = color, pos = (x2,y2,z2))
+        width = relation[plane_axis][edge_axis][0]
+        height = relation[plane_axis][edge_axis][1]
+        thickness = relation[plane_axis][edge_axis][2]
+        x1, x2 = extract(relation[plane_axis][edge_axis][3])
+        y1, y2 = extract(relation[plane_axis][edge_axis][4])
+        z1, z2 = extract(relation[plane_axis][edge_axis][5])
+        b1 = Box(self.batch, width, height, thickness, color=color, pos=(x1, y1, z1))
+        b2 = Box(self.batch, width, height, thickness, color=color, pos=(x2, y2, z2))
         return (b1, b2)
 
-    def gen_limits(self, point, plane_orientation, color):
+    def gen_limits(self, point, plane_axis, color):
         w = self.alfa + self.beta * 2
         t = self.beta
         h = self.alfa / 2
         rel = {
-            'n':[w, t, h, 'y',  1],
-            's':[w, t, h, 'y', -1],
-            'e':[t, w, h, 'x',  1],
-            'w':[t, w, h, 'x', -1],
-            'u':[w, h, t, 'z',  1],
-            'd':[w, h, t, 'z', -1],
+            'n': [w, t, h, 'y',  1],
+            's': [w, t, h, 'y', -1],
+            'e': [t, w, h, 'x',  1],
+            'w': [t, w, h, 'x', -1],
+            'u': [w, h, t, 'z',  1],
+            'd': [w, h, t, 'z', -1],
             }
         boxes = []
-        if plane_orientation == 'h':
+        if plane_axis == 'z':
             limits = 'nsew'
         else:
             limits = 'ewud'
@@ -223,48 +215,49 @@ class Map3D(object):
         for attrib in limits:
             if point.__getattribute__(attrib):
                 local = {}
-                width       = rel[attrib][0]
-                height      = rel[attrib][1]
-                thickness   = rel[attrib][2]
+                width = rel[attrib][0]
+                height = rel[attrib][1]
+                thickness = rel[attrib][2]
                 for axis in 'xyz':
                     local[axis] = point.__getattribute__(axis) * (self.beta + self.alfa)
                 local[rel[attrib][3]] = local[rel[attrib][3]] + (self.alfa + self.beta) / 2 * rel[attrib][4]
-                boxes.append(Box(self.batch, width, height, thickness, color = color, pos = (local['x'], local['y'], local['z'])))
+                boxes.append(Box(self.batch, width, height, thickness, color=color, pos=(local['x'], local['y'], local['z'])))
         return boxes
 
     def gen_books(self, p1, p2, color):
         books = []
         for point in p1.range(p2):
-            books.append(GridObject(file_name='sphere.obj', scale=4, color = color, grid = point))
+            books.append(GridObject(file_name='sphere.obj', scale=4, color=color, grid=point))
         return books
 
     def generate(self):
-        for plane in self.graph.get_planes():
-            if plane.orientation == 'h':
+        for plane in self.graph.plane.values():
+            if plane.axis == 'z':
                 color_limit = (0.0, 0.0, 1.0, 1.0)
-                color_book  = (0.0, 1.0, 1.0, 1.0)
+                color_book = (0.0, 1.0, 1.0, 1.0)
             else:
                 color_limit = (0.0, 0.8, 0.0, 1.0)
-                color_book  = (1.0, 0.8, 0.0, 1.0)
+                color_book = (1.0, 0.8, 0.0, 1.0)
 
-            for p1,p2, orientation in plane.get_edges():
-                plane.walls += self.gen_walls(p1, p2, orientation, plane.orientation, color_limit)
+            for p1, p2 in plane.get_edges():
+                plane.walls += self.gen_walls(p1, p2, plane.axis, color_limit)
                 plane.books += self.gen_books(p1, p2, color_book)
             plane.books = set(plane.books)
 
-            for point in plane.vertices:
-                plane.walls += self.gen_limits(point, plane.orientation, color_limit)
+            for point in plane.node.values():
+                plane.walls += self.gen_limits(point, plane.axis, color_limit)
+
 
 class Board(pyglet.window.Window):
 
     def __init__(self):
         pyglet.window.Window.__init__(self, resizable=True)
-        self.eye   = [-9.0, -10.0, 10.0]
+        self.eye = [-9.0, -10.0, 10.0]
         self.focus = [0.0, 0.0, 0.0]
-        self.up    = [0.0, 0.0, 1.0]
+        self.up = [0.0, 0.0, 1.0]
         self.width = 1024
         self.height = 1024
-        self.currentParameter = self.eye
+        self.curParam = self.eye
         self.speed = 1.0
         #One-time GL setup
         glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH)
@@ -274,7 +267,7 @@ class Board(pyglet.window.Window):
         glEnable(GL_CULL_FACE)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glEnable (GL_LINE_SMOOTH)
+        glEnable(GL_LINE_SMOOTH)
         glShadeModel(GL_SMOOTH)
 
         def vec(*args):
@@ -298,13 +291,14 @@ class Board(pyglet.window.Window):
         self.walls = []
 
         self.alpha = 0.0
+        self.label_batch = pyglet.graphics.Batch()
         self.label = pyglet.text.Label('0',
                                        font_name='Times New Roman',
-                                       font_size=50,
-                                       x=-150,
-                                       y=10,
-                                       batch=self.batch,
-                                       color=(0,0,0,255))
+                                       font_size=16,
+                                       x=0,
+                                       y=0,
+                                       batch=self.label_batch,
+                                       color=(0, 0, 0, 255))
         self.map = Map3D(self.batch, [
                                     2, 0,0, 3, 0,0,
                                     3,0,0,  3,1,0,
@@ -337,31 +331,58 @@ class Board(pyglet.window.Window):
                        )
 
         self.total_books = 0
+        #print self.map.graph.plane
+        #print self.map.graph.plane['y0'].node[Point(2,0,0)].plane
         for plane in self.map.graph.get_planes():
             self.walls += plane.walls
             self.total_books += len(plane.books)
+            self.set_plane_opacity(plane, 0.1)
         self.eaten_books = 0
         self.first_update = True
-        self.all_relations = self.map.graph.get_all_relations()
+        self.allrel = self.map.graph.get_all_relations()
         
-        vertex = self.map.graph.vertices[Point(2, 0, 0)]
-        self.monster = HumanObject(self.all_relations, vertex, file_name='sphere.obj', scale=self.size, color=(1.0, 0.0, 0.1, 1.0))
+        vertex = self.map.graph.node[Point(2, 0, 0)]
+        self.monster = HumanObject(self.allrel, vertex, file_name='sphere.obj', scale=self.size, color=(1.0, 0.0, 0.1, 1.0))
         self.monster.speed.onChange += self.resetBadGuysStep
+        self.monster.onProxGridChange += self.updatePlane
 
-        self.active_plane_type = 'h'
-        self.active_plane = 0
-        self.set_plane_opacity(self.map.graph.planes['h'][0], 1.0)
+        self.set_plane_opacity(self.map.graph.plane['z0'], 1.0)
+        self.active_plane = 'z0'
+        self.candidate_plane = None
 
-        self.susan = ImportedObject3D('susan.obj', 20, pos=(-50.0, -50.0, 0.0))
+        self.susan = ImportObj('susan.obj', 20, pos=(-50.0, -50.0, 0.0))
         self.badGuys = []
-        vertex = self.map.graph.vertices[Point(9,0,0)]
-        self.badGuys.append(RobotObject(self.all_relations, vertex, file_name='bad.obj', scale=3.0, color=(1.0, 0.0, 0.0, 1.0)))
+        vertex = self.map.graph.node[Point(9, 0, 0)]
+        self.badGuys.append(RobotObject(self.allrel, vertex, file_name='bad.obj', scale=3.0, color=(1.0, 0.0, 0.0, 1.0)))
         for badguy in self.badGuys:
             self.setBadGuyStep(badguy)
             badguy.noMoreTarget = self.setBadGuyStep
 
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+
+    def updatePlane(self):
+        plane = self.monster.proxGrid.plane
+        print plane
+        values = []
+        for axis in plane.axes:
+            num = getattr(plane, axis)
+            if num != None:
+                values.append(axis + str(num))
+        print values
+        if len(values) > 1:
+            values.remove(self.active_plane)
+            self.candidate_plane = values[0]
+            self.set_plane_opacity(self.map.graph.plane[self.candidate_plane], 0.4)
+        elif self.candidate_plane != None:
+            if self.monster.speed.axis != 'x':
+                if self.monster.speed.axis == self.active_plane[0]:
+                    self.set_plane_opacity(self.map.graph.plane[self.active_plane], 0.1)
+                    self.set_plane_opacity(self.map.graph.plane[self.candidate_plane], 1.0)
+                    self.active_plane = self.candidate_plane
+                else:
+                    self.set_plane_opacity(self.map.graph.plane[self.candidate_plane], 0.1)
+                self.candidate_plane = None
 
     def resetBadGuysStep(self):
         for badguy in self.badGuys:
@@ -403,7 +424,8 @@ class Board(pyglet.window.Window):
             guy.stop()
 
     def generatePath(self, source, destination):
-        edges = deepcopy(self.all_relations)
+        edges = deepcopy(self.allrel)
+        print edges
         visited = []
         source.parent = None
         frontier = [source]
@@ -419,7 +441,7 @@ class Board(pyglet.window.Window):
                 return path
 
             visited.append(current)
-            sons = edges[current].keys()
+            sons = edges[current]
             for son in sons:
                 if not son in visited and not son in frontier:
                     son.parent = current
@@ -455,11 +477,11 @@ class Board(pyglet.window.Window):
         glLineWidth(2)
 
         vertex_list = self.batch.add(6, GL_LINES, None,
-            ('v3f/stream', ( 0,0,0,  100,0,0,
+            ('v3f/stream', (0,0,0,  100,0,0,
                             0,0,0,  0,100,0,
                             0,0,0,  0,0,100)
             ),
-            ('c4B/stream', ( 255,0,0,255, 255,0,0,255,
+            ('c4B/stream', (255,0,0,255, 255,0,0,255,
                             0,255,0,255, 0,255,0,255,
                             0,0,255,255, 0,0,255,255)
             )
@@ -469,14 +491,14 @@ class Board(pyglet.window.Window):
 
     def on_draw(self):
         # Clear buffers
-        glClear(GL_COLOR_BUFFER_BIT  | GL_DEPTH_BUFFER_BIT)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Draw Grid
         glBegin(GL_LINES)
         glColor3f(0.0, 0.0, 0.0)
         end = self.alfa * self.gridSize + self.beta * self.gridSize + self.alfa / 2
         step = self.alfa + self.beta
-        for i in range(0,self.gridSize * 2 + 2):
+        for i in range(0, self.gridSize * 2 + 2):
             glVertex3i(end - i * step,-end - self.beta, 0)
             glVertex3i(end - i * step, end + self.beta, 0)
             glVertex3i(end - i * step + self.beta,-end - self.beta, 0)
@@ -487,6 +509,13 @@ class Board(pyglet.window.Window):
             glVertex3i(-end - self.beta, end - i * step + self.beta, 0)
             glVertex3i( end + self.beta, end - i * step + self.beta, 0)
         glEnd()
+
+        glPushMatrix()
+        glTranslatef(-100, 100, 160)
+        glRotatef(90, 1, 0, 0)
+        glRotatef(-45, 0, 1, 0)
+        self.label_batch.draw()
+        glPopMatrix()
 
         self.batch.draw()
         self.monster.draw_faces()
@@ -499,7 +528,7 @@ class Board(pyglet.window.Window):
         glFlush()
 
     def on_resize(self, width, height):
-        glViewport(0,0,self.width,self.height)
+        glViewport(0, 0, self.width, self.height)
         glMatrixMode(GL_PROJECTION)
         self.initView()
         return pyglet.event.EVENT_HANDLED
@@ -508,12 +537,12 @@ class Board(pyglet.window.Window):
         glLoadIdentity()
         if self.perspective:
             gluPerspective(
-                90.0,                                   # Field Of View
-                float(self.width)/float(self.height),   # aspect ratio
-                1.0,                                    # z near
-                1000.0)                                 # z far
+                90.0,                                    # Field Of View
+                float(self.width) / float(self.height),  # aspect ratio
+                1.0,                                     # z near
+                1000.0)                                  # z far
         else:
-            glOrtho(-150, 150, -150, 150, -300, 300);
+            glOrtho(-150, 150, -150, 150, -300, 300)
         gluLookAt(*(self.eye + self.focus + self.up))
 
     def on_key_press(self, symbol, modifiers):
@@ -528,26 +557,26 @@ class Board(pyglet.window.Window):
                 self.lights = True
                 glEnable(GL_LIGHTING)
         elif symbol == key.X:
-            self.currentParameter = self.eye
+            self.curParam = self.eye
             self.speed = 10.0
         elif symbol == key.Y:
-            self.currentParameter = self.focus
+            self.curParam = self.focus
             self.speed = 10.0
         elif symbol == key.Z:
             self.speed = 0.1
-            self.currentParameter = self.up
+            self.curParam = self.up
         elif symbol == key.NUM_7:
-            self.currentParameter[0] = round(self.currentParameter[0] + self.speed,1)
+            self.curParam[0] = round(self.curParam[0] + self.speed, 1)
         elif symbol == key.NUM_8:
-            self.currentParameter[1] = round(self.currentParameter[1] + self.speed,1)
+            self.curParam[1] = round(self.curParam[1] + self.speed, 1)
         elif symbol == key.NUM_9:
-            self.currentParameter[2] = round(self.currentParameter[2] + self.speed,1)
+            self.curParam[2] = round(self.curParam[2] + self.speed, 1)
         elif symbol == key.NUM_1:
-            self.currentParameter[0] = round(self.currentParameter[0] - self.speed,1)
+            self.curParam[0] = round(self.curParam[0] - self.speed, 1)
         elif symbol == key.NUM_2:
-            self.currentParameter[1] = round(self.currentParameter[1] - self.speed,1)
+            self.curParam[1] = round(self.curParam[1] - self.speed, 1)
         elif symbol == key.NUM_3:
-            self.currentParameter[2] = round(self.currentParameter[2] - self.speed,1)
+            self.curParam[2] = round(self.curParam[2] - self.speed, 1)
         elif symbol in [key.RIGHT, key.L, key.F]:
             self.monster.setDirection('e')
         elif symbol in [key.LEFT, key.J, key.S]:
@@ -566,8 +595,8 @@ class Board(pyglet.window.Window):
 
     def colliding(self, object1, objectList):
         for object2 in objectList:
-            minDistanceX = object1.width     / 2 + object2.width / 2
-            minDistanceY = object1.height    / 2 + object2.height / 2
+            minDistanceX = object1.width / 2 + object2.width / 2
+            minDistanceY = object1.height / 2 + object2.height / 2
             minDistanceZ = object1.thickness / 2 + object2.thickness / 2
             distanceX = abs(object1.x - object2.x)
             distanceY = abs(object1.y - object2.y)

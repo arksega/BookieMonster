@@ -6,26 +6,27 @@ from point import *
 
 class Object3D(Point):
 
-    def __init__(self, width, height, thickness, color=(0.0, 0.0, 0.0, 1.0), pos=(0, 0, 0)):
+    def __init__(self, width, height, thickness, \
+            color=(0.0, 0.0, 0.0, 1.0), pos=(0, 0, 0)):
         super(Object3D, self).__init__(*pos)
-        self.red    = color[0]
-        self.green  = color[1]
-        self.blue   = color[2]
-        self.alpha  = color[3]
-        self.width  = width
+        self.red = color[0]
+        self.green = color[1]
+        self.blue = color[2]
+        self.alpha = color[3]
+        self.width = width
         self.height = height
         self.thickness = thickness
 
 
-class ImportedObject3D(Object3D):
+class ImportObj(Object3D):
 
     def __init__(self, file_name, scale, *args, **kwargs):
-        if kwargs.has_key('batch'):
+        if 'batch' in kwargs:
             self.batch = kwargs.pop('batch')
         if args != ():
-            super(ImportedObject3D, self).__init__(scale, args[0], args[1], **kwargs)
+            super(ImportObj, self).__init__(scale, args[0], args[1], **kwargs)
         else:
-            super(ImportedObject3D, self).__init__(scale, scale, scale, **kwargs)
+            super(ImportObj, self).__init__(scale, scale, scale, **kwargs)
         self.vertices = []
         self.faces = []
         self.normals = []
@@ -131,13 +132,15 @@ class Grid(object):
     unit = alfa + beta
 
 
-class GridObject(ImportedObject3D, Grid):
+class GridObject(ImportObj, Grid):
 
     def __init__(self, grid=Point(), **kwargs):
         if not isinstance(grid, Point):
             raise ValueError('grid parameter should be Point instance')
         pos = [x * self.unit for x in grid.getAxes()]
-        super(GridObject, self).__init__(kwargs.pop('file_name'), kwargs.pop('scale'), pos=pos, **kwargs)
+        super(GridObject, self).__init__(kwargs.pop('file_name'), \
+                                        kwargs.pop('scale'), \
+                                        pos=pos, **kwargs)
         self.grid = deepcopy(grid)
 
 
@@ -149,15 +152,15 @@ class MobileObject(GridObject):
     def __init__(self, vertices, grid=Point(), **kwargs):
         assert isinstance(vertices, dict)
         super(MobileObject, self).__init__(grid, **kwargs)
-        self.grid     = deepcopy(grid)
+        self.grid = deepcopy(grid)
         self.proxGrid = deepcopy(grid)
-        self.origin   = deepcopy(grid)
-        self.speed    = Speed()
+        self.origin = deepcopy(grid)
+        self.speed = Speed()
         self.vertices = vertices
         self.updateConnections()
 
     def updateConnections(self):
-        self.connections = self.vertices[self.origin].keys() + [self.origin]
+        self.connections = self.vertices[self.origin] + [self.origin]
 
     def updateGrids(self):
         proxGrid = self.calcProxGrid()
@@ -220,8 +223,8 @@ class MobileObject(GridObject):
     def setTarget(self, target):
         axis = self.grid.getOrientation(target)
         targetVal = getattr(target, axis)
-        localVal  = getattr(self.grid, axis)
-        self.speed.set(axis, 1 if localVal < targetVal else -1)
+        _localVal = getattr(self.grid, axis)
+        self.speed.set(axis, 1 if _localVal < targetVal else -1)
         self.origin = self.target
 
     target = property(calcTarget, setTarget)
@@ -277,6 +280,10 @@ class HumanObject(MobileObject):
                 self.speed.set(axis, val)
             else:
                 self.pendingAction = (axis, val)
+
+    def updateProxGrid(self, grid):
+        super(HumanObject, self).updateProxGrid(grid)
+        self.onProxGridChange()
 
 
 class RobotObject(MobileObject):

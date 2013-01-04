@@ -23,4 +23,4 @@ class Event:
     __iadd__ = handle
     __isub__ = unhandle
     __call__ = fire
-    __len__  = getHandlerCount
+    __len__ = getHandlerCount
