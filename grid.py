@@ -2,6 +2,7 @@ from pyglet.gl import *
 from pyglet.graphics import Batch
 from operator import add, sub, methodcaller
 from point import *
+from config import *
 
 
 class Object3D(Point):
@@ -20,7 +21,9 @@ class Object3D(Point):
 
 class ImportObj(Object3D):
 
-    def __init__(self, file_name, scale, *args, **kwargs):
+    conf = Config()
+
+    def __init__(self, model_name, scale, *args, **kwargs):
         if 'batch' in kwargs:
             self.batch = kwargs.pop('batch')
         if args != ():
@@ -31,12 +34,12 @@ class ImportObj(Object3D):
         self.faces = []
         self.normals = []
         self.scale = scale
-        self.load_file(file_name)
+        self.load_file(model_name)
 
-    def load_file(self, file_name):
+    def load_file(self, model_name):
         if not hasattr(self, 'batch'):
             self.batch = Batch()
-        file = open('data/models/' + file_name)
+        file = open(self.conf.modelsdir + model_name + '.obj')
         f = 0
         for line in file.readlines():
             if line[0:2] == 'v ':
@@ -125,20 +128,16 @@ class Box(Object3D):
         )
 
 
-class Grid(object):
-
-    alfa = 10
-    beta = 2
-    unit = alfa + beta
-
-
-class GridObject(ImportObj, Grid):
+class GridObject(ImportObj):
 
     def __init__(self, grid=Point(), **kwargs):
         if not isinstance(grid, Point):
             raise ValueError('grid parameter should be Point instance')
+        self.alfa = self.conf.alfa
+        self.beta = self.conf.beta
+        self.unit = self.alfa + self.beta
         pos = [x * self.unit for x in grid.getAxes()]
-        super(GridObject, self).__init__(kwargs.pop('file_name'), \
+        super(GridObject, self).__init__(kwargs.pop('model_name'), \
                                         kwargs.pop('scale'), \
                                         pos=pos, **kwargs)
         self.grid = deepcopy(grid)

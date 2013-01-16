@@ -1,0 +1,5 @@
+mapsdir: data/maps/
+modelsdir: data/models/
+alfa: 10
+beta: 2
+gridSize: 10

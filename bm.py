@@ -6,6 +6,7 @@ from random import choice
 from copy import copy, deepcopy
 from event import Event
 from grid import *
+from config import *
 from collections import defaultdict
 
 
@@ -140,17 +141,33 @@ class Plane(Graph):
         return string
 
 
-class Map3D(object):
+class Map3D(Config):
 
-    def __init__(self, batch, points, alfa=10, beta=2):
-        self.alfa = alfa
-        self.beta = beta
+    def __init__(self, batch, points):
+        super(Map3D, self).__init__()
         self.batch = batch
         self.graph = Map()
         self.graph.load_points(points)
         self.objects = []
         self.books = []
         self.generate()
+
+    def draw_grid(self):
+        glBegin(GL_LINES)
+        glColor3f(0.0, 0.0, 0.0)
+        end = self.alfa * self.gridSize + self.beta * self.gridSize + self.alfa / 2
+        step = self.alfa + self.beta
+        for i in range(0, self.gridSize * 2 + 2):
+            glVertex3i(end - i * step,-end - self.beta, 0)
+            glVertex3i(end - i * step, end + self.beta, 0)
+            glVertex3i(end - i * step + self.beta,-end - self.beta, 0)
+            glVertex3i(end - i * step + self.beta, end + self.beta, 0)
+
+            glVertex3i(-end - self.beta, end - i * step, 0)
+            glVertex3i( end + self.beta, end - i * step, 0)
+            glVertex3i(-end - self.beta, end - i * step + self.beta, 0)
+            glVertex3i( end + self.beta, end - i * step + self.beta, 0)
+        glEnd()
 
     def gen_walls(self, p1, p2, plane_axis, color):
         a = self.alfa
@@ -227,7 +244,7 @@ class Map3D(object):
     def gen_books(self, p1, p2, color):
         books = []
         for point in p1.range(p2):
-            books.append(GridObject(file_name='sphere.obj', scale=4, color=color, grid=point))
+            books.append(GridObject(model_name='sphere', scale=4, color=color, grid=point))
         return books
 
     def generate(self):
@@ -281,11 +298,7 @@ class Board(pyglet.window.Window):
 
         self.batch = pyglet.graphics.Batch()
         self.perspective = False
-        self.alfa = 10
-        self.beta = 2
-        self.gridSize = 10
         self.size = 8
-        self.change = (self.alfa - self.size) / 2
 
         self.gen_axes()
         self.walls = []
@@ -342,7 +355,7 @@ class Board(pyglet.window.Window):
         self.allrel = self.map.graph.get_all_relations()
         
         vertex = self.map.graph.node[Point(2, 0, 0)]
-        self.monster = HumanObject(self.allrel, vertex, file_name='sphere.obj', scale=self.size, color=(1.0, 0.0, 0.1, 1.0))
+        self.monster = HumanObject(self.allrel, vertex, model_name='sphere', scale=self.size, color=(1.0, 0.0, 0.1, 1.0))
         self.monster.speed.onChange += self.resetBadGuysStep
         self.monster.onProxGridChange += self.updatePlane
 
@@ -350,10 +363,10 @@ class Board(pyglet.window.Window):
         self.active_plane = 'z0'
         self.candidate_plane = None
 
-        self.susan = ImportObj('susan.obj', 20, pos=(-50.0, -50.0, 0.0))
+        self.susan = ImportObj('susan', 20, pos=(-50.0, -50.0, 0.0))
         self.badGuys = []
         vertex = self.map.graph.node[Point(9, 0, 0)]
-        self.badGuys.append(RobotObject(self.allrel, vertex, file_name='bad.obj', scale=3.0, color=(1.0, 0.0, 0.0, 1.0)))
+        self.badGuys.append(RobotObject(self.allrel, vertex, model_name='bad', scale=3.0, color=(1.0, 0.0, 0.0, 1.0)))
         for badguy in self.badGuys:
             self.setBadGuyStep(badguy)
             badguy.noMoreTarget = self.setBadGuyStep
@@ -494,21 +507,7 @@ class Board(pyglet.window.Window):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Draw Grid
-        glBegin(GL_LINES)
-        glColor3f(0.0, 0.0, 0.0)
-        end = self.alfa * self.gridSize + self.beta * self.gridSize + self.alfa / 2
-        step = self.alfa + self.beta
-        for i in range(0, self.gridSize * 2 + 2):
-            glVertex3i(end - i * step,-end - self.beta, 0)
-            glVertex3i(end - i * step, end + self.beta, 0)
-            glVertex3i(end - i * step + self.beta,-end - self.beta, 0)
-            glVertex3i(end - i * step + self.beta, end + self.beta, 0)
-
-            glVertex3i(-end - self.beta, end - i * step, 0)
-            glVertex3i( end + self.beta, end - i * step, 0)
-            glVertex3i(-end - self.beta, end - i * step + self.beta, 0)
-            glVertex3i( end + self.beta, end - i * step + self.beta, 0)
-        glEnd()
+        self.map.draw_grid()
 
         glPushMatrix()
         glTranslatef(-100, 100, 160)
@@ -525,8 +524,6 @@ class Board(pyglet.window.Window):
         for plane in self.map.graph.get_planes():
             for book in plane.books:
                 book.draw_faces()
-        glFlush()
-
     def on_resize(self, width, height):
         glViewport(0, 0, self.width, self.height)
         glMatrixMode(GL_PROJECTION)
