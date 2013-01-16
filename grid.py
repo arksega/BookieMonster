@@ -36,7 +36,7 @@ class ImportObj(Object3D):
     def load_file(self, file_name):
         if not hasattr(self, 'batch'):
             self.batch = Batch()
-        file = open(file_name)
+        file = open('data/models/' + file_name)
         f = 0
         for line in file.readlines():
             if line[0:2] == 'v ':
