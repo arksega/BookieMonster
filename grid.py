@@ -3,7 +3,6 @@ from pyglet.graphics import Batch
 from operator import add, sub, mul, methodcaller
 from point import *
 from config import *
-import numpy as np
 
 
 class Object3D(Point):
