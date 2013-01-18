@@ -34,9 +34,12 @@ class Importer(Object3D):
         self.scale = scale
         self.load_file(model_name)
         colors = self.color * (len(self.faces))
-        self.vertex_list = self.batch.add(
+        self.vtx_list = self.batch.add(
                 len(self.faces), GL_TRIANGLES, None,
                 ('v3f', self.vertices), ('n3f', self.normals), ('c4f', colors))
+
+    def __del__(self):
+        self.vtx_list.delete()
 
     def load_file(self, model_name):
         self.vertices = []
@@ -65,6 +68,7 @@ class Importer(Object3D):
         self.vertices = real_vertices
         self.normals = real_normals
 
+
 class DinamicObj(Importer):
 
     def __init__(self, *args, **kwargs):
@@ -77,10 +81,6 @@ class DinamicObj(Importer):
         glScalef(self.scale, self.height, self.thickness)
         self.batch.draw()
         glPopMatrix()
-
-    def setOpacity(self, opacity):
-        self.vertex_list.colors = (
-                self.vertex_list.colors[:3] + [opacity]) * len(self.faces)
 
 
 class StaticObj(Importer):
@@ -100,9 +100,13 @@ class StaticObj(Importer):
 
     def __setTransform(self, operator, vector):
         tmp_vertices = []
-        for vertex in zip(*[self.vertex_list.vertices[x::3] for x in range(3)]):
+        for vertex in zip(*[self.vtx_list.vertices[x::3] for x in range(3)]):
             tmp_vertices += [operator(*pair) for pair in zip(vertex, vector)]
-        self.vertex_list.vertices = tmp_vertices
+        self.vtx_list.vertices = tmp_vertices
+
+    def setOpacity(self, opacity):
+        self.vtx_list.colors = (
+                self.vtx_list.colors[:3] + [opacity]) * len(self.faces)
 
 
 class Box(StaticObj):
@@ -111,29 +115,37 @@ class Box(StaticObj):
         super(Box, self).__init__('box', width, height, thickness, **kwargs)
 
 
-class GridObject(DinamicObj):
+class GridObj(object):
 
-    def __init__(self, grid=Point(), **kwargs):
+    def translatePos(self, grid):
         if not isinstance(grid, Point):
             raise ValueError('grid parameter should be Point instance')
         self.alfa = self.conf.alfa
         self.beta = self.conf.beta
         self.unit = self.alfa + self.beta
         pos = [x * self.unit for x in grid.getAxes()]
-        super(GridObject, self).__init__(kwargs.pop('model_name'), \
-                                        kwargs.pop('scale'), \
-                                        pos=pos, **kwargs)
         self.grid = deepcopy(grid)
+        return pos
 
 
-class MobileObject(GridObject):
+class StaticObject(StaticObj, GridObj):
+
+    def __init__(self, grid=Point(), **kwargs):
+        super(StaticObject, self).__init__(kwargs.pop('model_name'), \
+                                        kwargs.pop('scale'), \
+                                        pos=self.translatePos(grid), **kwargs)
+
+
+class MobileObject(DinamicObj, GridObj):
 
     pendingAction = None
     connections = None
 
     def __init__(self, vertices, grid=Point(), **kwargs):
         assert isinstance(vertices, dict)
-        super(MobileObject, self).__init__(grid, **kwargs)
+        super(MobileObject, self).__init__(kwargs.pop('model_name'), \
+                                        kwargs.pop('scale'), \
+                                        pos=self.translatePos(grid), **kwargs)
         self.grid = deepcopy(grid)
         self.proxGrid = deepcopy(grid)
         self.origin = deepcopy(grid)

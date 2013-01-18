@@ -244,7 +244,7 @@ class Map3D(Config):
     def gen_books(self, p1, p2, color):
         books = []
         for point in p1.range(p2):
-            books.append(GridObject(model_name='sphere', scale=4, color=color, grid=point))
+            books.append(StaticObject(model_name='sphere', scale=4, color=color, grid=point))
         return books
 
     def generate(self):
@@ -403,7 +403,7 @@ class Board(pyglet.window.Window):
 
     def set_plane_opacity(self, plane, opacity):
         for wall in plane.walls:
-            wall.vertex_list.colors = (wall.vertex_list.colors[:3] + [opacity]) * 36
+            wall.setOpacity(opacity)
 
         for book in plane.books:
             book.setOpacity(opacity)
@@ -519,9 +519,6 @@ class Board(pyglet.window.Window):
         self.batch.draw()
         self.monster.draw_faces()
         [guy.draw_faces() for guy in self.badGuys]
-        for plane in self.map.graph.get_planes():
-            for book in plane.books:
-                book.draw_faces()
     def on_resize(self, width, height):
         glViewport(0, 0, self.width, self.height)
         glMatrixMode(GL_PROJECTION)
