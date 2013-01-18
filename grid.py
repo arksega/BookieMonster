@@ -10,10 +10,7 @@ class Object3D(Point):
     def __init__(self, width, height, thickness, \
             color=(0.0, 0.0, 0.0, 1.0), pos=(0, 0, 0)):
         super(Object3D, self).__init__(*pos)
-        self.red = color[0]
-        self.green = color[1]
-        self.blue = color[2]
-        self.alpha = color[3]
+        self.color = color
         self.width = width
         self.height = height
         self.thickness = thickness
@@ -63,12 +60,10 @@ class ImportObj(Object3D):
             for n in range(3):
                 real_vertices.append(self.vertices[vertex * 3 + n])
                 real_normals.append(self.normals[normal * 3 + n])
-        colors = (self.red, self.green, self.blue, self.alpha) * (len(self.faces))
-        self.faces_vertex_list = self.batch.add(len(self.faces), GL_TRIANGLES, None,
-                                                                ('v3f', real_vertices),
-                                                                ('n3f', real_normals),
-                                                                ('c4f', colors)
-                                                                )
+        colors = self.color * (len(self.faces))
+        self.vtxList = self.batch.add(
+                len(self.faces), GL_TRIANGLES, None,
+                ('v3f', real_vertices), ('n3f', real_normals), ('c4f', colors))
 
     def draw_faces(self):
         glPushMatrix()
@@ -78,7 +73,8 @@ class ImportObj(Object3D):
         glPopMatrix()
 
     def setOpacity(self, opacity):
-        self.faces_vertex_list.colors = (self.faces_vertex_list.colors[:3] + [opacity]) * len(self.faces)
+        self.vtxList.colors = (
+                self.vtxList.colors[:3] + [opacity]) * len(self.faces)
 
 
 class Box(Object3D):
@@ -119,7 +115,7 @@ class Box(Object3D):
                     self.x1,self.y2,self.z1, self.x2,self.y2,self.z1, self.x1,self.y2,self.z2,
                     self.x2,self.y2,self.z1, self.x2,self.y2,self.z2, self.x1,self.y2,self.z2)
                 ),
-                ('c4f/stream', (self.red, self.green, self.blue, 0.1) * 36)
+                            ('c4f/stream', (self.color[:3] + (0.1,)) * 36)
         )
 
 
