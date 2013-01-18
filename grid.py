@@ -17,9 +17,26 @@ class Object3D(Point):
         self.thickness = thickness
 
 
-class Importer(object):
+class Importer(Object3D):
 
     conf = Config()
+
+    def __init__(self, model_name, scale, *args, **kwargs):
+        '''Should initialize the bach before call this member'''
+        if args != ():
+            super(Importer, self).__init__(scale, args[0], args[1], **kwargs)
+            self.height = args[0]
+            self.thickness = args[1]
+        else:
+            super(Importer, self).__init__(scale, scale, scale, **kwargs)
+            self.height = scale
+            self.thickness = scale
+        self.scale = scale
+        self.load_file(model_name)
+        colors = self.color * (len(self.faces))
+        self.vertex_list = self.batch.add(
+                len(self.faces), GL_TRIANGLES, None,
+                ('v3f', self.vertices), ('n3f', self.normals), ('c4f', colors))
 
     def load_file(self, model_name):
         self.vertices = []
@@ -48,27 +65,11 @@ class Importer(object):
         self.vertices = real_vertices
         self.normals = real_normals
 
-class ImportObj(Object3D, Importer):
+class DinamicObj(Importer):
 
-    def __init__(self, model_name, scale, *args, **kwargs):
-        if 'batch' in kwargs:
-            self.batch = kwargs.pop('batch')
-        else:
-            self.batch = Batch()
-        if args != ():
-            super(ImportObj, self).__init__(scale, args[0], args[1], **kwargs)
-            self.height = args[0]
-            self.thickness = args[1]
-        else:
-            super(ImportObj, self).__init__(scale, scale, scale, **kwargs)
-            self.height = scale
-            self.thickness = scale
-        self.scale = scale
-        self.load_file(model_name)
-        colors = self.color * (len(self.faces))
-        self.vertex_list = self.batch.add(
-                len(self.faces), GL_TRIANGLES, None,
-                ('v3f', self.vertices), ('n3f', self.normals), ('c4f', colors))
+    def __init__(self, *args, **kwargs):
+        self.batch = Batch()
+        super(DinamicObj, self).__init__(*args, **kwargs)
 
     def draw_faces(self):
         glPushMatrix()
@@ -82,25 +83,12 @@ class ImportObj(Object3D, Importer):
                 self.vertex_list.colors[:3] + [opacity]) * len(self.faces)
 
 
-class StaticObj(Object3D, Importer):
+class StaticObj(Importer):
 
     batch = Batch()
 
-    def __init__(self, model_name, scale, *args, **kwargs):
-        if args != ():
-            super(StaticObj, self).__init__(scale, args[0], args[1], **kwargs)
-            self.height = args[0]
-            self.thickness = args[1]
-        else:
-            super(StaticObj, self).__init__(scale, scale, scale, **kwargs)
-            self.height = scale
-            self.thickness = scale
-        self.scale = scale
-        self.load_file(model_name)
-        colors = self.color * (len(self.faces))
-        self.vertex_list = self.batch.add(
-                len(self.faces), GL_TRIANGLES, None,
-                ('v3f', self.vertices), ('n3f', self.normals), ('c4f', colors))
+    def __init__(self, *args, **kwargs):
+        super(StaticObj, self).__init__(*args, **kwargs)
         self.__setScale()
         self.__setPos()
 
@@ -117,18 +105,13 @@ class StaticObj(Object3D, Importer):
         self.vertex_list.vertices = tmp_vertices
 
 
-    def setOpacity(self, opacity):
-        self.vertex_list.colors = (
-                self.vertex_list.colors[:3] + [opacity]) * len(self.faces)
-
-
 class Box(StaticObj):
 
     def __init__(self, width, height, thickness, **kwargs):
         super(Box, self).__init__('box', width, height, thickness, **kwargs)
 
 
-class GridObject(ImportObj):
+class GridObject(DinamicObj):
 
     def __init__(self, grid=Point(), **kwargs):
         if not isinstance(grid, Point):

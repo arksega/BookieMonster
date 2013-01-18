@@ -363,7 +363,7 @@ class Board(pyglet.window.Window):
         self.active_plane = 'z0'
         self.candidate_plane = None
 
-        self.susan = ImportObj('susan', 20, pos=(-50.0, -50.0, 0.0))
+        self.susan = StaticObj('susan', 20, pos=(-50.0, -50.0, 0.0))
         self.badGuys = []
         vertex = self.map.graph.node[Point(9, 0, 0)]
         self.badGuys.append(RobotObject(self.allrel, vertex, model_name='bad', scale=3.0, color=(1.0, 0.0, 0.0, 1.0)))
@@ -519,8 +519,6 @@ class Board(pyglet.window.Window):
         self.batch.draw()
         self.monster.draw_faces()
         [guy.draw_faces() for guy in self.badGuys]
-        #self.susan.draw_points()
-        self.susan.draw_faces()
         for plane in self.map.graph.get_planes():
             for book in plane.books:
                 book.draw_faces()
