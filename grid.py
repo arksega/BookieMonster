@@ -28,12 +28,16 @@ class ImportObj(Object3D):
             self.batch = kwargs.pop('batch')
         if args != ():
             super(ImportObj, self).__init__(scale, args[0], args[1], **kwargs)
+            self.height = args[0]
+            self.thickness = args[1]
         else:
             super(ImportObj, self).__init__(scale, scale, scale, **kwargs)
+            self.height = scale
+            self.thickness = scale
+        self.scale = scale
         self.vertices = []
         self.faces = []
         self.normals = []
-        self.scale = scale
         self.load_file(model_name)
 
     def load_file(self, model_name):
@@ -43,42 +47,33 @@ class ImportObj(Object3D):
         f = 0
         for line in file.readlines():
             if line[0:2] == 'v ':
-                self.vertices += [float(x) * self.scale for x in line[2:].split()]
+                self.vertices += [float(x) for x in line[2:].split()]
             elif line[0:2] == 'vn':
-                self.normals += [float(x) * self.scale for x in line[2:].split()]
+                self.normals += [float(x) for x in line[2:].split()]
             elif line[0:2] == 'f ':
                 self.faces += [x for x in line[2:].split()]
                 f += 1
-        colors = (self.red, self.green, self.blue, self.alpha) * (len(self.vertices) / 3)
-        self.vertices_vertex_list = pyglet.graphics.vertex_list(len(self.vertices) / 3,
-                                                                ('v3f', self.vertices),
-                                                                ('c4f', colors)
-                                                                )
-        real_faces = []
+
+        real_vertices = []
         real_normals = []
         for vertex in self.faces:
             vertex, normal = [int(n) for n in vertex.split('//')]
             vertex -= 1
             normal -= 1
             for n in range(3):
-                real_faces.append(self.vertices[vertex * 3 + n])
+                real_vertices.append(self.vertices[vertex * 3 + n])
                 real_normals.append(self.normals[normal * 3 + n])
         colors = (self.red, self.green, self.blue, self.alpha) * (len(self.faces))
         self.faces_vertex_list = self.batch.add(len(self.faces), GL_TRIANGLES, None,
-                                                                ('v3f', real_faces),
+                                                                ('v3f', real_vertices),
                                                                 ('n3f', real_normals),
                                                                 ('c4f', colors)
                                                                 )
 
-    def draw_points(self):
-        glPushMatrix()
-        glTranslatef(self.x, self.y, self.z)
-        self.vertices_vertex_list.draw(GL_POINTS)
-        glPopMatrix()
-
     def draw_faces(self):
         glPushMatrix()
         glTranslatef(self.x, self.y, self.z)
+        glScalef(self.scale, self.height, self.thickness)
         self.batch.draw()
         glPopMatrix()
 
