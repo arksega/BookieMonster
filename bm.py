@@ -206,8 +206,8 @@ class Map3D(Config):
         x1, x2 = extract(relation[plane_axis][edge_axis][3])
         y1, y2 = extract(relation[plane_axis][edge_axis][4])
         z1, z2 = extract(relation[plane_axis][edge_axis][5])
-        b1 = Box(self.batch, width, height, thickness, color=color, pos=(x1, y1, z1))
-        b2 = Box(self.batch, width, height, thickness, color=color, pos=(x2, y2, z2))
+        b1 = Box(width, height, thickness, color=color, pos=(x1, y1, z1))
+        b2 = Box(width, height, thickness, color=color, pos=(x2, y2, z2))
         return (b1, b2)
 
     def gen_limits(self, point, plane_axis, color):
@@ -238,7 +238,7 @@ class Map3D(Config):
                 for axis in 'xyz':
                     local[axis] = point.__getattribute__(axis) * (self.beta + self.alfa)
                 local[rel[attrib][3]] = local[rel[attrib][3]] + (self.alfa + self.beta) / 2 * rel[attrib][4]
-                boxes.append(Box(self.batch, width, height, thickness, color=color, pos=(local['x'], local['y'], local['z'])))
+                boxes.append(Box(width, height, thickness, color=color, pos=(local['x'], local['y'], local['z'])))
         return boxes
 
     def gen_books(self, p1, p2, color):
@@ -296,7 +296,7 @@ class Board(pyglet.window.Window):
         glLightfv(GL_LIGHT0, GL_SPECULAR, vec(.5, .5, .5, .5))
         glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(0.1, 0.1, .1, 1.0))
 
-        self.batch = pyglet.graphics.Batch()
+        self.batch = StaticObj.batch
         self.perspective = False
         self.size = 8
 

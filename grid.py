@@ -1,8 +1,9 @@
 from pyglet.gl import *
 from pyglet.graphics import Batch
-from operator import add, sub, methodcaller
+from operator import add, sub, mul, methodcaller
 from point import *
 from config import *
+import numpy as np
 
 
 class Object3D(Point):
@@ -77,50 +78,54 @@ class ImportObj(Object3D, Importer):
         glPopMatrix()
 
     def setOpacity(self, opacity):
-        self.vtxList.colors = (
-                self.vtxList.colors[:3] + [opacity]) * len(self.faces)
+        self.vertex_list.colors = (
+                self.vertex_list.colors[:3] + [opacity]) * len(self.faces)
 
 
-class Box(Object3D):
+class StaticObj(Object3D, Importer):
 
-    def __init__(self, batch, width, height, thickness, **kwargs):
-        super(Box, self).__init__(width, height, thickness, **kwargs)
-        self.x1 = self.x + width / 2
-        self.y1 = self.y + height / 2
-        self.z1 = self.z + thickness / 2
-        self.x2 = self.x - width / 2
-        self.y2 = self.y - height / 2
-        self.z2 = self.z - thickness / 2
-        self.batch = batch
+    batch = Batch()
 
-        self.vertex_list = self.batch.add(36, GL_TRIANGLES, None,
-            ('v3f/stream', (
-                    # Front
-                    self.x1,self.y1,self.z1, self.x2,self.y1,self.z1, self.x1,self.y2,self.z1,
-                    self.x2,self.y1,self.z1, self.x2,self.y2,self.z1, self.x1,self.y2,self.z1,
+    def __init__(self, model_name, scale, *args, **kwargs):
+        if args != ():
+            super(StaticObj, self).__init__(scale, args[0], args[1], **kwargs)
+            self.height = args[0]
+            self.thickness = args[1]
+        else:
+            super(StaticObj, self).__init__(scale, scale, scale, **kwargs)
+            self.height = scale
+            self.thickness = scale
+        self.scale = scale
+        self.load_file(model_name)
+        colors = self.color * (len(self.faces))
+        self.vertex_list = self.batch.add(
+                len(self.faces), GL_TRIANGLES, None,
+                ('v3f', self.vertices), ('n3f', self.normals), ('c4f', colors))
+        self.__setScale()
+        self.__setPos()
 
-                    # Back
-                    self.x1,self.y2,self.z2, self.x2,self.y1,self.z2, self.x1,self.y1,self.z2,
-                    self.x2,self.y2,self.z2, self.x2,self.y1,self.z2, self.x1,self.y2,self.z2,
+    def __setScale(self):
+        self.__setTransform(mul, (self.scale, self.height, self.thickness))
 
-                    # Left
-                    self.x1,self.y1,self.z2, self.x1,self.y1,self.z1, self.x1,self.y2,self.z1,
-                    self.x1,self.y1,self.z2, self.x1,self.y2,self.z1, self.x1,self.y2,self.z2,
+    def __setPos(self):
+        self.__setTransform(add, (self.x, self.y, self.z))
 
-                    # Right
-                    self.x2,self.y1,self.z1, self.x2,self.y1,self.z2, self.x2,self.y2,self.z1,
-                    self.x2,self.y1,self.z2, self.x2,self.y2,self.z2, self.x2,self.y2,self.z1,
+    def __setTransform(self, operator, vector):
+        tmp_vertices = []
+        for vertex in zip(*[self.vertex_list.vertices[x::3] for x in range(3)]):
+            tmp_vertices += [operator(*pair) for pair in zip(vertex, vector)]
+        self.vertex_list.vertices = tmp_vertices
 
-                    # Top
-                    self.x2,self.y1,self.z1, self.x1,self.y1,self.z1, self.x1,self.y1,self.z2,
-                    self.x2,self.y1,self.z2, self.x2,self.y1,self.z1, self.x1,self.y1,self.z2,
 
-                    # Bottom
-                    self.x1,self.y2,self.z1, self.x2,self.y2,self.z1, self.x1,self.y2,self.z2,
-                    self.x2,self.y2,self.z1, self.x2,self.y2,self.z2, self.x1,self.y2,self.z2)
-                ),
-                            ('c4f/stream', (self.color[:3] + (0.1,)) * 36)
-        )
+    def setOpacity(self, opacity):
+        self.vertex_list.colors = (
+                self.vertex_list.colors[:3] + [opacity]) * len(self.faces)
+
+
+class Box(StaticObj):
+
+    def __init__(self, width, height, thickness, **kwargs):
+        super(Box, self).__init__('box', width, height, thickness, **kwargs)
 
 
 class GridObject(ImportObj):
