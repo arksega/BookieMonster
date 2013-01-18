@@ -1,7 +1,6 @@
 import pyglet
 from pyglet.gl import *
 from pyglet.window import key
-from OpenGL.GLUT import *
 from random import choice
 from copy import copy, deepcopy
 from event import Event
@@ -277,7 +276,6 @@ class Board(pyglet.window.Window):
         self.curParam = self.eye
         self.speed = 1.0
         #One-time GL setup
-        glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH)
         glClearColor(1, 1, 1, 1)
         glColor3f(1, 0, 0)
         glEnable(GL_DEPTH_TEST)
