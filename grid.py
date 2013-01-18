@@ -16,30 +16,14 @@ class Object3D(Point):
         self.thickness = thickness
 
 
-class ImportObj(Object3D):
+class Importer(object):
 
     conf = Config()
 
-    def __init__(self, model_name, scale, *args, **kwargs):
-        if 'batch' in kwargs:
-            self.batch = kwargs.pop('batch')
-        if args != ():
-            super(ImportObj, self).__init__(scale, args[0], args[1], **kwargs)
-            self.height = args[0]
-            self.thickness = args[1]
-        else:
-            super(ImportObj, self).__init__(scale, scale, scale, **kwargs)
-            self.height = scale
-            self.thickness = scale
-        self.scale = scale
+    def load_file(self, model_name):
         self.vertices = []
         self.faces = []
         self.normals = []
-        self.load_file(model_name)
-
-    def load_file(self, model_name):
-        if not hasattr(self, 'batch'):
-            self.batch = Batch()
         file = open(self.conf.modelsdir + model_name + '.obj')
         f = 0
         for line in file.readlines():
@@ -60,10 +44,30 @@ class ImportObj(Object3D):
             for n in range(3):
                 real_vertices.append(self.vertices[vertex * 3 + n])
                 real_normals.append(self.normals[normal * 3 + n])
+        self.vertices = real_vertices
+        self.normals = real_normals
+
+class ImportObj(Object3D, Importer):
+
+    def __init__(self, model_name, scale, *args, **kwargs):
+        if 'batch' in kwargs:
+            self.batch = kwargs.pop('batch')
+        else:
+            self.batch = Batch()
+        if args != ():
+            super(ImportObj, self).__init__(scale, args[0], args[1], **kwargs)
+            self.height = args[0]
+            self.thickness = args[1]
+        else:
+            super(ImportObj, self).__init__(scale, scale, scale, **kwargs)
+            self.height = scale
+            self.thickness = scale
+        self.scale = scale
+        self.load_file(model_name)
         colors = self.color * (len(self.faces))
-        self.vtxList = self.batch.add(
+        self.vertex_list = self.batch.add(
                 len(self.faces), GL_TRIANGLES, None,
-                ('v3f', real_vertices), ('n3f', real_normals), ('c4f', colors))
+                ('v3f', self.vertices), ('n3f', self.normals), ('c4f', colors))
 
     def draw_faces(self):
         glPushMatrix()
