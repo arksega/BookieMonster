@@ -1,4 +1,5 @@
 import pyglet
+import re
 from pyglet.gl import *
 from pyglet.window import key
 from random import choice
@@ -310,37 +311,9 @@ class Board(pyglet.window.Window):
                                        y=0,
                                        batch=self.label_batch,
                                        color=(0, 0, 0, 255))
-        self.map = Map3D(self.batch, [
-                                    2, 0,0, 3, 0,0,
-                                    3,0,0,  3,1,0,
-                                    3,0,0,  8,0,0,
-                                    8,1,0, 3,1,0,
-                                    8,1,0, 8,0,0,
-                                    8,0,0, 9,0,0,
-                                    9, 0,0, 9,-4,0,
-                                    9,-4,0, 2,-4,0,
-                                    2,-4,0, 2, 0,0,
-
-                                    2,0,0,  2,0,9,
-
-                                    2,0,9,  2,4,9,
-                                    2,4,9,  -2,4,9,
-                                    -2,4,9, -2,0,9,
-                                    -2,0,9, 2,0,9,
-
-                                    2,0,9,  6,0,9,
-                                    6,0,9,  6,-4,9,
-                                    6,-4,9, 2,-4,9,
-                                    2,-4,9, 2,0,9,
-
-                                    2,-4,0,  2,-4,4,
-                                    2,-4,4,  9,-4,4,
-                                    9,-4,4,  9,-4,0,
-                                    9,-4,0,  9,-4,-4,
-                                    9,-4,-4, 2,-4,-4,
-                                    ]
-                       )
-
+        self.gconf = Config()  # Config file values
+        self.pattern = re.compile(r'\s+')
+        self.map = Map3D(self.batch, self.loadMap('1.mp'))
         self.total_books = 0
         #print self.map.graph.plane
         #print self.map.graph.plane['y0'].node[Point(2,0,0)].plane
@@ -394,6 +367,15 @@ class Board(pyglet.window.Window):
                 else:
                     self.set_plane_opacity(self.map.graph.plane[self.candidate_plane], 0.1)
                 self.candidate_plane = None
+
+    def loadMap(self, filename):
+        filemap = open(self.gconf.mapsdir + filename)
+        pattern = re.compile(r'\s+')
+        data = filemap.read()
+        data = re.sub(pattern, '', data)
+        if data[-1] == ',':
+            data = data[:-1]
+        return [int(n) for n in data.split(',')]
 
     def resetBadGuysStep(self):
         for badguy in self.badGuys:
