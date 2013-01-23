@@ -1,5 +1,6 @@
 import yaml
 
+
 class Config(dict):
     __getattr__ = dict.__getitem__
 
@@ -8,3 +9,4 @@ class Config(dict):
         data = yaml.load(configFile)
         for key in data:
             dict.__setitem__(self, key, data[key])
+        self.unit = self.alfa + self.beta

@@ -121,7 +121,7 @@ class GridObj(object):
             raise ValueError('grid parameter should be Point instance')
         self.alfa = self.conf.alfa
         self.beta = self.conf.beta
-        self.unit = self.alfa + self.beta
+        self.unit = self.conf.unit
         pos = [x * self.unit for x in grid.getAxes()]
         self.grid = deepcopy(grid)
         return pos
@@ -230,7 +230,7 @@ class MobileObject(DinamicObj, GridObj):
 
     def move(self, operator):
         for axis in self.speed.axes:
-            pos   = getattr(self, axis)
+            pos = getattr(self, axis)
             speed = getattr(self.speed, axis)
             setattr(self, axis, operator(pos, speed))
 
@@ -268,7 +268,7 @@ class HumanObject(MobileObject):
     def setDirection(self, direction):
         if not getattr(self.proxGrid, direction):
             axis = self.direction_speed[direction][0]
-            val  = self.direction_speed[direction][1]
+            val = self.direction_speed[direction][1]
             if self.speed.axis == None or self.speed.axis == axis:
                 self.speed.set(axis, val)
             else:

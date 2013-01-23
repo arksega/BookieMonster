@@ -155,29 +155,29 @@ class Map3D(Config):
     def draw_grid(self):
         glBegin(GL_LINES)
         glColor3f(0.0, 0.0, 0.0)
-        end = self.alfa * self.gridSize + self.beta * self.gridSize + self.alfa / 2
+        end = self.unit * self.gridSize + self.alfa / 2
         step = self.alfa + self.beta
         for i in range(0, self.gridSize * 2 + 2):
-            glVertex3i(end - i * step,-end - self.beta, 0)
-            glVertex3i(end - i * step, end + self.beta, 0)
-            glVertex3i(end - i * step + self.beta,-end - self.beta, 0)
-            glVertex3i(end - i * step + self.beta, end + self.beta, 0)
+            glVertex3i(end - i * step, -end - self.beta, 0)
+            glVertex3i(end - i * step,  end + self.beta, 0)
+            glVertex3i(end - i * step + self.beta, -end - self.beta, 0)
+            glVertex3i(end - i * step + self.beta,  end + self.beta, 0)
 
             glVertex3i(-end - self.beta, end - i * step, 0)
-            glVertex3i( end + self.beta, end - i * step, 0)
+            glVertex3i(end + self.beta, end - i * step, 0)
             glVertex3i(-end - self.beta, end - i * step + self.beta, 0)
-            glVertex3i( end + self.beta, end - i * step + self.beta, 0)
+            glVertex3i(end + self.beta, end - i * step + self.beta, 0)
         glEnd()
 
     def gen_walls(self, p1, p2, plane_axis, color):
         a = self.alfa
         b = self.beta
         edge_axis = p1.getOrientation(p2)
-        param2 = getattr(p1, edge_axis)
-        param1 = getattr(p2, edge_axis)
-        shift = (a + b) / 2 if (abs(param1 - param2) - 1) % 2 == 0 else 0
-        c = (abs(param1 - param2) - 1) * (a + b) + b
-        m = min(param1, param2) * (a + b) + abs(param1 - param2) / 2 * (a + b) + shift
+        prm2 = getattr(p1, edge_axis)
+        prm1 = getattr(p2, edge_axis)
+        shift = (a + b) / 2 if (abs(prm1 - prm2) - 1) % 2 == 0 else 0
+        c = (abs(prm1 - prm2) - 1) * (a + b) + b
+        m = min(prm1, prm2) * (a + b) + abs(prm1 - prm2) / 2 * (a + b) + shift
         relation = {
             'z': {
                  'x': [c, b, a / 2,  'm', 'vy', 'fz'],
@@ -230,21 +230,23 @@ class Map3D(Config):
             rel['e'] = [t, h, w, 'x',  1]
             rel['w'] = [t, h, w, 'x', -1]
         for attrib in limits:
-            if point.__getattribute__(attrib):
+            if getattr(point, attrib):
                 local = {}
-                width = rel[attrib][0]
-                height = rel[attrib][1]
-                thickness = rel[attrib][2]
+                w = rel[attrib][0]  # width
+                h = rel[attrib][1]  # height
+                t = rel[attrib][2]  # thickness
                 for axis in 'xyz':
-                    local[axis] = point.__getattribute__(axis) * (self.beta + self.alfa)
-                local[rel[attrib][3]] = local[rel[attrib][3]] + (self.alfa + self.beta) / 2 * rel[attrib][4]
-                boxes.append(Box(width, height, thickness, color=color, pos=(local['x'], local['y'], local['z'])))
+                    local[axis] = getattr(point, axis) * (self.unit)
+                local[rel[attrib][3]] += (self.unit) / 2 * rel[attrib][4]
+                pos = (local['x'], local['y'], local['z'])
+                boxes.append(Box(w, h, t, color=color, pos=pos))
         return boxes
 
     def gen_books(self, p1, p2, color):
         books = []
         for point in p1.range(p2):
-            books.append(StaticObject(model_name='sphere', scale=4, color=color, grid=point))
+            books.append(StaticObject(
+                    model_name='sphere', scale=4, color=color, grid=point))
         return books
 
     def generate(self):
@@ -324,20 +326,24 @@ class Board(pyglet.window.Window):
         self.eaten_books = 0
         self.first_update = True
         self.allrel = self.map.graph.get_all_relations()
-        
+
         vertex = self.map.graph.node[Point(2, 0, 0)]
-        self.monster = HumanObject(self.allrel, vertex, model_name='sphere', scale=self.size, color=(1.0, 0.0, 0.1, 1.0))
+        self.monster = HumanObject(
+                self.allrel, vertex, model_name='sphere', scale=self.size,
+                color=(1.0, 0.0, 0.1, 1.0))
         self.monster.speed.onChange += self.resetBadGuysStep
         self.monster.onProxGridChange += self.updatePlane
 
         self.set_plane_opacity(self.map.graph.plane['z0'], 1.0)
         self.active_plane = 'z0'
-        self.candidate_plane = None
+        self.altPlane = None
 
         self.susan = StaticObj('susan', 20, pos=(-50.0, -50.0, 0.0))
         self.badGuys = []
         vertex = self.map.graph.node[Point(9, 0, 0)]
-        self.badGuys.append(RobotObject(self.allrel, vertex, model_name='bad', scale=3.0, color=(1.0, 0.0, 0.0, 1.0)))
+        self.badGuys.append(RobotObject(
+                self.allrel, vertex, model_name='bad', scale=3.0,
+                color=(1.0, 0.0, 0.0, 1.0)))
         for badguy in self.badGuys:
             self.setBadGuyStep(badguy)
             badguy.noMoreTarget = self.setBadGuyStep
@@ -346,6 +352,7 @@ class Board(pyglet.window.Window):
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
     def updatePlane(self):
+        g = self.map.graph
         plane = self.monster.proxGrid.plane
         print plane
         values = []
@@ -356,17 +363,17 @@ class Board(pyglet.window.Window):
         print values
         if len(values) > 1:
             values.remove(self.active_plane)
-            self.candidate_plane = values[0]
-            self.set_plane_opacity(self.map.graph.plane[self.candidate_plane], 0.4)
-        elif self.candidate_plane != None:
+            self.altPlane = values[0]
+            self.set_plane_opacity(g.plane[self.altPlane], 0.4)
+        elif self.altPlane != None:
             if self.monster.speed.axis != 'x':
                 if self.monster.speed.axis == self.active_plane[0]:
-                    self.set_plane_opacity(self.map.graph.plane[self.active_plane], 0.1)
-                    self.set_plane_opacity(self.map.graph.plane[self.candidate_plane], 1.0)
-                    self.active_plane = self.candidate_plane
+                    self.set_plane_opacity(g.plane[self.active_plane], 0.1)
+                    self.set_plane_opacity(g.plane[self.altPlane], 1.0)
+                    self.active_plane = self.altPlane
                 else:
-                    self.set_plane_opacity(self.map.graph.plane[self.candidate_plane], 0.1)
-                self.candidate_plane = None
+                    self.set_plane_opacity(g.plane[self.altPlane], 0.1)
+                self.altPlane = None
 
     def loadMap(self, filename):
         filemap = open(self.gconf.mapsdir + filename)
@@ -470,13 +477,13 @@ class Board(pyglet.window.Window):
         glLineWidth(2)
 
         vertex_list = self.batch.add(6, GL_LINES, None,
-            ('v3f/stream', (0,0,0,  100,0,0,
-                            0,0,0,  0,100,0,
-                            0,0,0,  0,0,100)
+            ('v3f/stream', (0, 0, 0,  100, 0, 0,
+                            0, 0, 0,  0, 100, 0,
+                            0, 0, 0,  0, 0, 100)
             ),
-            ('c4B/stream', (255,0,0,255, 255,0,0,255,
-                            0,255,0,255, 0,255,0,255,
-                            0,0,255,255, 0,0,255,255)
+            ('c4B/stream', (255, 0, 0, 255,  255, 0, 0, 255,
+                            0, 255, 0, 255,  0, 255, 0, 255,
+                            0, 0, 255, 255,  0, 0, 255, 255)
             )
         )
 
@@ -499,6 +506,7 @@ class Board(pyglet.window.Window):
         self.batch.draw()
         self.monster.draw_faces()
         [guy.draw_faces() for guy in self.badGuys]
+
     def on_resize(self, width, height):
         glViewport(0, 0, self.width, self.height)
         glMatrixMode(GL_PROJECTION)
