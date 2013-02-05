@@ -108,6 +108,62 @@ class StaticObj(Importer):
                 self.vtx_list.colors[:3] + [opacity]) * len(self.faces)
 
 
+class Font(Importer):
+
+    def __init__(self, letter):
+        self.load_file('../fonts/whitrabt/' + letter)
+
+    def instance(self):
+        return pyglet.graphics.vertex_list(
+                len(self.faces),
+                ('v3f', self.vertices), ('n3f', self.normals), ('c4f', (0.0,1.0,1.0,1.0) * (len(self.faces))))
+
+
+class FontProvider(object):
+
+    fonts = {}
+
+    def getFont(self, letter):
+        if not self.fonts.has_key(letter):
+            self.fonts[letter] = Font(letter)
+        return self.fonts[letter].instance()
+
+
+class Label(StaticObj):
+
+    fp = FontProvider()
+
+    def __init__(self, text):
+        self.setText(text)
+        batch = Batch()
+        text = ''
+
+    def __setTransform(self, operator, vector, model):
+        tmp_vertices = []
+        for vertex in zip(*[model.vertices[x::3] for x in range(3)]):
+            tmp_vertices += [operator(*pair) for pair in zip(vertex, vector)]
+        model.vertices = tmp_vertices
+
+    def setText(self, text):
+        self.chars = []
+        step = 10
+        start = len(text) / 2 * step * -1
+        if len(text) % 2 == 0:
+            shift = 0
+        else:
+            shift = -5
+        for letter in text:
+            model = self.fp.getFont(letter)
+            self.__setTransform(mul, (10, 10, 10), model)
+            self.__setTransform(add, (start + shift, 0, 0), model)
+            start += step
+            self.chars.append(model)
+
+    def draw(self):
+        for char in self.chars:
+            char.draw(GL_TRIANGLES)
+
+
 class Box(StaticObj):
 
     def __init__(self, width, height, thickness, **kwargs):
