@@ -8,6 +8,7 @@ from event import Event
 from grid import *
 from config import *
 from collections import defaultdict
+import math
 
 
 class _Nodes(dict):
@@ -271,7 +272,7 @@ class Board(pyglet.window.Window):
 
     def __init__(self):
         pyglet.window.Window.__init__(self, resizable=True)
-        self.eye = [-9.0, -10.0, 10.0]
+        self.eye = [-100.0, -100.0, 100.0]
         self.focus = [0.0, 0.0, 0.0]
         self.up = [0.0, 0.0, 1.0]
         self.width = 1024
@@ -306,14 +307,6 @@ class Board(pyglet.window.Window):
         self.walls = []
 
         self.alpha = 0.0
-        self.label_batch = pyglet.graphics.Batch()
-        self.label = pyglet.text.Label('0',
-                                       font_name='Times New Roman',
-                                       font_size=16,
-                                       x=0,
-                                       y=0,
-                                       batch=self.label_batch,
-                                       color=(0, 0, 0, 255))
         self.gconf = Config()  # Config file values
         self.pattern = re.compile(r'\s+')
         self.map = Map3D(self.batch, self.loadMap('1.mp'))
@@ -349,6 +342,8 @@ class Board(pyglet.window.Window):
             self.setBadGuyStep(badguy)
             badguy.noMoreTarget = self.setBadGuyStep
 
+        self.labelTest = Label('')
+
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
@@ -356,6 +351,7 @@ class Board(pyglet.window.Window):
         g = self.map.graph
         plane = self.monster.proxGrid.plane
         print plane
+        print(self.total_books, self.eaten_books)
         values = []
         for axis in plane.axes:
             num = getattr(plane, axis)
@@ -468,11 +464,11 @@ class Board(pyglet.window.Window):
             if book != None:
                 plane.books.remove(book)
                 self.eaten_books += 1
-                self.label.text = str(self.eaten_books * 100)
+                self.labelTest.setText(str(self.eaten_books * 100))
                 break
 
         if self.total_books == self.eaten_books:
-            self.label.text = "Winner!!"
+            self.labelTest.setText("Winner")
 
     def gen_axes(self):
         glLineWidth(2)
@@ -498,10 +494,30 @@ class Board(pyglet.window.Window):
         self.map.draw_grid()
 
         glPushMatrix()
-        glTranslatef(-100, 100, 160)
-        glRotatef(90, 1, 0, 0)
-        glRotatef(-45, 0, 1, 0)
-        self.label_batch.draw()
+
+        distanceYZ = math.sqrt(self.eye[2] ** 2 + self.eye[1] ** 2)
+        deltaz = math.radians(26)
+
+        arcYZ = math.atan2(self.eye[2], self.eye[1])
+        if self.eye[1] <= 0:
+            deltaz *= -1
+        arcYZ = arcYZ - math.radians(180) - deltaz
+
+        zlevel = 140 * math.sin(arcYZ) + self.eye[2]
+        ylevel = 140 * math.cos(arcYZ) + self.eye[1]
+        glTranslatef(0, ylevel, zlevel)
+
+        rotx = math.degrees(arcYZ)
+        rotz = 0
+        #rotz = math.degrees(arcXY)
+        if self.eye[1] > 0:
+            rotx += 180
+            rotz += 180
+        glRotatef(rotx, 1, 0, 0)
+        glRotatef(rotz, 0, 0, 1)
+        glRotatef(-45, 0, 0, 1)
+        self.labelTest.draw()
+
         glPopMatrix()
 
         self.batch.draw()
@@ -518,7 +534,7 @@ class Board(pyglet.window.Window):
         glLoadIdentity()
         if self.perspective:
             gluPerspective(
-                90.0,                                    # Field Of View
+                60.0,                                    # Field Of View
                 float(self.width) / float(self.height),  # aspect ratio
                 1.0,                                     # z near
                 1000.0)                                  # z far
