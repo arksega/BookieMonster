@@ -278,6 +278,7 @@ class Board(pyglet.window.Window):
         self.height = 1024
         self.curParam = self.eye
         self.speed = 1.0
+        self.step = 10.0
         #One-time GL setup
         glClearColor(1, 1, 1, 1)
         glColor3f(1, 0, 0)
@@ -538,25 +539,25 @@ class Board(pyglet.window.Window):
                 glEnable(GL_LIGHTING)
         elif symbol == key.X:
             self.curParam = self.eye
-            self.speed = 10.0
+            self.step = 10.0
         elif symbol == key.Y:
             self.curParam = self.focus
-            self.speed = 10.0
+            self.step = 10.0
         elif symbol == key.Z:
-            self.speed = 0.1
+            self.step = 0.1
             self.curParam = self.up
         elif symbol == key.NUM_7:
-            self.curParam[0] = round(self.curParam[0] + self.speed, 1)
+            self.curParam[0] = round(self.curParam[0] + self.step, 1)
         elif symbol == key.NUM_8:
-            self.curParam[1] = round(self.curParam[1] + self.speed, 1)
+            self.curParam[1] = round(self.curParam[1] + self.step, 1)
         elif symbol == key.NUM_9:
-            self.curParam[2] = round(self.curParam[2] + self.speed, 1)
+            self.curParam[2] = round(self.curParam[2] + self.step, 1)
         elif symbol == key.NUM_1:
-            self.curParam[0] = round(self.curParam[0] - self.speed, 1)
+            self.curParam[0] = round(self.curParam[0] - self.step, 1)
         elif symbol == key.NUM_2:
-            self.curParam[1] = round(self.curParam[1] - self.speed, 1)
+            self.curParam[1] = round(self.curParam[1] - self.step, 1)
         elif symbol == key.NUM_3:
-            self.curParam[2] = round(self.curParam[2] - self.speed, 1)
+            self.curParam[2] = round(self.curParam[2] - self.step, 1)
         elif symbol in [key.RIGHT, key.L, key.F]:
             self.monster.setDirection('e')
         elif symbol in [key.LEFT, key.J, key.S]:
