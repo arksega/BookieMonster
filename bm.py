@@ -180,12 +180,12 @@ class Map3D(Config):
         m = min(prm1, prm2) * (a + b) + abs(prm1 - prm2) / 2 * (a + b) + shift
         relation = {
             'z': {
-                 'x': [c, b, a / 2,  'm', 'vy', 'fz'],
-                 'y': [b, c, a / 2, 'vx',  'm', 'fz'],
+                 'x': [c, b, a / 4,  'm', 'vy', 'fz'],
+                 'y': [b, c, a / 4, 'vx',  'm', 'fz'],
                  },
             'y': {
-                 'z': [b, a / 2, c, 'vx', 'fy',  'm'],
-                 'x': [c, a / 2, b,  'm', 'fy', 'vz'],
+                 'z': [b, a / 4, c, 'vx', 'fy',  'm'],
+                 'x': [c, a / 4, b,  'm', 'fy', 'vz'],
                  }
             }
 
