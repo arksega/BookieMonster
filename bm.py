@@ -280,7 +280,6 @@ class Board(pyglet.window.Window):
         self.height = 1024
         self.curParam = self.eye
         self.step = 10.0
-        self.pause = True
         #One-time GL setup
         glClearColor(1, 1, 1, 1)
         glColor3f(1, 0, 0)
@@ -305,7 +304,6 @@ class Board(pyglet.window.Window):
         self.size = 8
 
         self.gen_axes()
-        self.walls = []
 
         self.alpha = 0.0
         self.label_batch = pyglet.graphics.Batch()
@@ -316,7 +314,6 @@ class Board(pyglet.window.Window):
                                        y=0,
                                        batch=self.label_batch,
                                        color=(0, 255, 255, 255))
-        self.label.text = 'Move you to start'
         self.gconf = Config()  # Config file values
         self.pattern = re.compile(r'\s+')
         self.maps = os.listdir('data/maps')
@@ -325,16 +322,14 @@ class Board(pyglet.window.Window):
         self.first_update = True
 
         self.getMap()
-        self.monster.speed.onChange += self.resetBadGuysStep
-        self.monster.onProxGridChange += self.updatePlane
 
         self.active_plane = 'z0'
         self.altPlane = None
 
         self.susan = StaticObj('susan', 20, pos=(-50.0, -50.0, 0.0))
-        for badguy in self.badGuys:
+        '''for badguy in self.badGuys:
             self.setBadGuyStep(badguy)
-            badguy.noMoreTarget = self.setBadGuyStep
+            badguy.noMoreTarget = self.setBadGuyStep'''
         media = pyglet.resource.media
         self.pick = media('data/sound/get.wav', streaming=False)
         self.win = media('data/sound/win.wav', streaming=False)
@@ -342,9 +337,12 @@ class Board(pyglet.window.Window):
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
-    def getMap(self):
+    def getMap(self, *args):
         currentmap = self.maps.pop(0)
-        self.map = Map3D(self.batch, self.loadMap('1.mp'))
+        self.map = Map3D(self.batch, self.loadMap(currentmap))
+        self.walls = []
+        self.pause = True
+        self.label.text = 'Move you to start'
         for plane in self.map.graph.get_planes():
             self.walls += plane.walls
             self.total_books += len(plane.books)
@@ -355,6 +353,8 @@ class Board(pyglet.window.Window):
         self.monster = HumanObject(
                 self.allrel, monsterp, model_name='sphere', scale=self.size,
                 color=(1.0, 0.0, 0.1, 1.0))
+        self.monster.speed.onChange += self.resetBadGuysStep
+        self.monster.onProxGridChange += self.updatePlane
         countBooks = 0
         for plane in self.map.graph.get_planes():
             countBooks += len(plane.books)
@@ -364,9 +364,12 @@ class Board(pyglet.window.Window):
             plane = random.choice(self.map.graph.plane.keys())
             print('Planex', plane)
             closerp, fartherp = self.getPlaneCorners(self.map.graph.plane[plane], monsterp)
-            self.badGuys.append(RobotObject(
+            badGuy = RobotObject(
                     self.allrel, fartherp, model_name='bad', scale=3.0,
-                    color=(1.0, 0.0, 0.0, 1.0)))
+                    color=(1.0, 0.0, 0.0, 1.0))
+            self.badGuys.append(badGuy)
+            self.setBadGuyStep(badGuy)
+            badGuy.noMoreTarget = self.setBadGuyStep
 
 
     def getPlaneCorners(self, plane, origin = Point()):
@@ -388,7 +391,7 @@ class Board(pyglet.window.Window):
     def updatePlane(self):
         g = self.map.graph
         plane = self.monster.proxGrid.plane
-        print plane
+        print('Proxplane', plane)
         values = []
         for axis in plane.axes:
             num = getattr(plane, axis)
@@ -513,10 +516,13 @@ class Board(pyglet.window.Window):
             self.first_update = False
 
         if self.total_books == self.eaten_books and not self.pause:
-            self.label.text = "Winner!!"
+            if len(self.maps) < 1:
+                self.label.text = 'Game completed'
+            else:
+                self.label.text = 'Winner!!'
+                pyglet.clock.schedule_once(self.getMap, 3)
             self.pause = True
             self.win.play()
-            pyglet.clock.schedule_once(pyglet.app.exit, 3)
 
     def gen_axes(self):
         glLineWidth(2)
