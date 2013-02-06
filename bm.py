@@ -277,8 +277,8 @@ class Board(pyglet.window.Window):
         self.width = 1024
         self.height = 1024
         self.curParam = self.eye
-        self.speed = 1.0
         self.step = 10.0
+        self.pause = True
         #One-time GL setup
         glClearColor(1, 1, 1, 1)
         glColor3f(1, 0, 0)
@@ -308,12 +308,13 @@ class Board(pyglet.window.Window):
         self.alpha = 0.0
         self.label_batch = pyglet.graphics.Batch()
         self.label = pyglet.text.Label('0',
-                                       font_name='Times New Roman',
+                                       font_name='White Rabbit',
                                        font_size=16,
                                        x=0,
                                        y=0,
                                        batch=self.label_batch,
-                                       color=(0, 0, 0, 255))
+                                       color=(0, 255, 255, 255))
+        self.label.text = 'Move you to start'
         self.gconf = Config()  # Config file values
         self.pattern = re.compile(r'\s+')
         self.map = Map3D(self.batch, self.loadMap('1.mp'))
@@ -451,25 +452,26 @@ class Board(pyglet.window.Window):
 
     def update(self, dt):
 
-        self.monster.moveForward()
-        self.monster.updateGrids()
+        if self.pause == False:
+            self.monster.moveForward()
+            self.monster.updateGrids()
 
-        for badGuy in self.badGuys:
-            badGuy.moveForward()
-            badGuy.updateGrids()
+            for badGuy in self.badGuys:
+                badGuy.moveForward()
+                badGuy.updateGrids()
+
+            for plane in self.map.graph.get_planes():
+                book = self.colliding(self.monster, plane.books)
+                if book != None:
+                    plane.books.remove(book)
+                    self.eaten_books += 1
+                    self.label.text = str(self.eaten_books * 100)
+                    break
 
         if self.first_update:
             self.eaten_books -= 1
             self.total_books -= 1
             self.first_update = False
-
-        for plane in self.map.graph.get_planes():
-            book = self.colliding(self.monster, plane.books)
-            if book != None:
-                plane.books.remove(book)
-                self.eaten_books += 1
-                self.label.text = str(self.eaten_books * 100)
-                break
 
         if self.total_books == self.eaten_books:
             self.label.text = "Winner!!"
@@ -529,7 +531,9 @@ class Board(pyglet.window.Window):
     def on_key_press(self, symbol, modifiers):
         glLoadIdentity()
         if symbol == key.P:
-            self.perspective = not self.perspective
+            #self.perspective = not self.perspective
+            self.label.text = 'Move you to resume'
+            self.pause = True
         elif symbol == key.O:
             if self.lights:
                 self.lights = False
@@ -559,16 +563,22 @@ class Board(pyglet.window.Window):
         elif symbol == key.NUM_3:
             self.curParam[2] = round(self.curParam[2] - self.step, 1)
         elif symbol in [key.RIGHT, key.L, key.F]:
+            self.pause = False
             self.monster.setDirection('e')
         elif symbol in [key.LEFT, key.J, key.S]:
+            self.pause = False
             self.monster.setDirection('w')
         elif symbol in [key.UP, key.I]:
+            self.pause = False
             self.monster.setDirection('n')
         elif symbol in [key.DOWN, key.K]:
+            self.pause = False
             self.monster.setDirection('s')
         elif symbol == key.E:
+            self.pause = False
             self.monster.setDirection('u')
         elif symbol == key.D:
+            self.pause = False
             self.monster.setDirection('d')
 
         self.initView()
