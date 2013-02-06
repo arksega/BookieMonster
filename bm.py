@@ -1,5 +1,7 @@
 import pyglet
 import re
+import random
+import os
 from pyglet.gl import *
 from pyglet.window import key
 from random import choice
@@ -349,7 +351,10 @@ class Board(pyglet.window.Window):
         for badguy in self.badGuys:
             self.setBadGuyStep(badguy)
             badguy.noMoreTarget = self.setBadGuyStep
-
+        media = pyglet.resource.media
+        self.pick = media('data/sound/get.wav', streaming=False)
+        self.win = media('data/sound/win.wav', streaming=False)
+        self.go = media('data/sound/game-over.wav', streaming=False)
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
@@ -464,17 +469,27 @@ class Board(pyglet.window.Window):
                 book = self.colliding(self.monster, plane.books)
                 if book != None:
                     plane.books.remove(book)
+                    self.pick.play()
                     self.eaten_books += 1
                     self.label.text = str(self.eaten_books * 100)
                     break
+            badguy = self.colliding(self.monster, self.badGuys)
+            if badguy != None:
+                self.pause = True
+                self.label.text = 'GAME OVER'
+                self.label.color = (255,0,0,255)
+                self.go.play()
 
         if self.first_update:
             self.eaten_books -= 1
             self.total_books -= 1
             self.first_update = False
 
-        if self.total_books == self.eaten_books:
+        if self.total_books == self.eaten_books and not self.pause:
             self.label.text = "Winner!!"
+            self.pause = True
+            self.win.play()
+            pyglet.clock.schedule_once(pyglet.app.exit, 3)
 
     def gen_axes(self):
         glLineWidth(2)
