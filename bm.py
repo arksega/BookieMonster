@@ -319,35 +319,19 @@ class Board(pyglet.window.Window):
         self.label.text = 'Move you to start'
         self.gconf = Config()  # Config file values
         self.pattern = re.compile(r'\s+')
-        self.map = Map3D(self.batch, self.loadMap('1.mp'))
+        self.maps = os.listdir('data/maps')
         self.total_books = 0
-        #print self.map.graph.plane
-        #print self.map.graph.plane['y0'].node[Point(2,0,0)].plane
-        for plane in self.map.graph.get_planes():
-            self.walls += plane.walls
-            self.total_books += len(plane.books)
-            self.set_plane_opacity(plane, 0.1)
         self.eaten_books = 0
         self.first_update = True
-        self.allrel = self.map.graph.get_all_relations()
 
-        vertex = self.map.graph.node[Point(2, 0, 0)]
-        self.monster = HumanObject(
-                self.allrel, vertex, model_name='sphere', scale=self.size,
-                color=(1.0, 0.0, 0.1, 1.0))
+        self.getMap()
         self.monster.speed.onChange += self.resetBadGuysStep
         self.monster.onProxGridChange += self.updatePlane
 
-        self.set_plane_opacity(self.map.graph.plane['z0'], 1.0)
         self.active_plane = 'z0'
         self.altPlane = None
 
         self.susan = StaticObj('susan', 20, pos=(-50.0, -50.0, 0.0))
-        self.badGuys = []
-        vertex = self.map.graph.node[Point(9, 0, 0)]
-        self.badGuys.append(RobotObject(
-                self.allrel, vertex, model_name='bad', scale=3.0,
-                color=(1.0, 0.0, 0.0, 1.0)))
         for badguy in self.badGuys:
             self.setBadGuyStep(badguy)
             badguy.noMoreTarget = self.setBadGuyStep
@@ -357,6 +341,49 @@ class Board(pyglet.window.Window):
         self.go = media('data/sound/game-over.wav', streaming=False)
         # Uncomment this line for a wireframe view
         # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+
+    def getMap(self):
+        currentmap = self.maps.pop(0)
+        self.map = Map3D(self.batch, self.loadMap('1.mp'))
+        for plane in self.map.graph.get_planes():
+            self.walls += plane.walls
+            self.total_books += len(plane.books)
+            self.set_plane_opacity(plane, 0.1)
+        self.allrel = self.map.graph.get_all_relations()
+        self.set_plane_opacity(self.map.graph.plane['z0'], 1.0)
+        monsterp, fartherp = self.getPlaneCorners(self.map.graph.plane['z0'])
+        self.monster = HumanObject(
+                self.allrel, monsterp, model_name='sphere', scale=self.size,
+                color=(1.0, 0.0, 0.1, 1.0))
+        countBooks = 0
+        for plane in self.map.graph.get_planes():
+            countBooks += len(plane.books)
+
+        self.badGuys = []
+        for i in range(countBooks / 100):
+            plane = random.choice(self.map.graph.plane.keys())
+            print('Planex', plane)
+            closerp, fartherp = self.getPlaneCorners(self.map.graph.plane[plane], monsterp)
+            self.badGuys.append(RobotObject(
+                    self.allrel, fartherp, model_name='bad', scale=3.0,
+                    color=(1.0, 0.0, 0.0, 1.0)))
+
+
+    def getPlaneCorners(self, plane, origin = Point()):
+        closerp = plane.node[plane.node.keys()[0]]
+        closerd = origin.distance(closerp)
+        fartherp = plane.node[plane.node.keys()[0]]
+        fartherd = origin.distance(fartherp)
+        for node in plane.node:
+            distance = origin.distance(node)
+            print('meter', origin, node, distance)
+            if distance < closerd:
+                closerd = distance
+                closerp = node
+            if distance > fartherd:
+                fartherd = distance
+                fartherp = node
+        return closerp, fartherp
 
     def updatePlane(self):
         g = self.map.graph

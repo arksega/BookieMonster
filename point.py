@@ -90,6 +90,12 @@ class Point(object):
             points.append(self.mask(axis, val))
         return points
 
+    def distance(self, other):
+        distance = 0
+        for axis in self.axes:
+            distance += abs(getattr(self,axis) - getattr(other,axis))
+        return distance
+
 
 class Vertex(Point):
 
