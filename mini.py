@@ -1,10 +1,12 @@
 #!/bin/python3
 import sys
 import os
+from grid import *
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
 from pyglet.gl import *
+import pyglet
 
 class MainWindow(QMainWindow):
     
@@ -23,6 +25,34 @@ class GLWidget(QGLWidget):
 
     def __init__(self, parent=None):
         QGLWidget.__init__(self, parent)
+        self.obj1 = DinamicObj('susan', 20)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.updateGL)
+        self.timer.start(1000)
+        self.delta = 0
+        self.poss = 0
+        pyglet.font.add_file('data/fonts/whitrabt.ttf')
+        self.font_size = 32
+        self.label = pyglet.text.Label(
+                font_name='White Rabbit', 
+                font_size=self.font_size, 
+                color=(0, 255, 255, 255))
+
+    def move(self):
+        if self.poss == 100:
+            self.delta = -10
+        elif self.poss == 0:
+            self.delta = 10
+
+        self.poss += self.delta
+        self.obj1.setAxes(Point(self.poss, 0, 0))
+
+    def draw(self):
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        self.setup3D(self.w, self.h)
+        self.draw_3D()
+        self.setup2D(self.w, self.h)
+        self.draw_2D()
 
     def initializeGL(self):
         glDisable(GL_TEXTURE_2D);
@@ -35,11 +65,9 @@ class GLWidget(QGLWidget):
 
     def resizeGL(self, w, h):
         glViewport(0, 0, w, h)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        self.setup3D(w, h)
-        self.draw_grid()
-        self.setup2D(w, h)
-        self.draw_triangle()
+        self.w = w
+        self.h = h
+        self.label.y = h - self.font_size
 
     def setup3D(self, w, h):
         glMatrixMode(GL_PROJECTION)
@@ -56,16 +84,29 @@ class GLWidget(QGLWidget):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
 
+    def updateGL(self):
+        self.move()
+        self.label.text = str(self.poss)
+        self.glDraw()
+
     def paintGL(self):
-        print('draw')
+        self.draw()
         pass
+
+    def draw_2D(self):
+        self.draw_triangle()
+        self.label.draw()
+
+    def draw_3D(self):
+        self.draw_grid()
+        self.obj1.draw_faces()
 
     def draw_triangle(self):
         glColor3f(1,0,0)
         glBegin(GL_POLYGON)
         glVertex2f(0,0)
-        glVertex2f(100,500)
-        glVertex2f(500,100)
+        glVertex2f(10,50)
+        glVertex2f(50,10)
         glEnd()
 
     def draw_grid(self):
