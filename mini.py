@@ -32,16 +32,20 @@ class GLWidget(QGLWidget):
 
     def resizeGL(self, w, h):
         glViewport(0, 0, w, h)
+        self.setup3D(w, h)
+        self.draw_grid()
+
+    def setup3D(self, w, h):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(60., w / float(h), .1, 1000.)
+        gluPerspective(40., w / float(h), 0.5, 500.0)
         gluLookAt(-100, 100, 100, 0, 0, 0, 0, 0, 1)
         glMatrixMode(GL_MODELVIEW)
-        #glLoadIdentity()
+        glLoadIdentity()
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
     def paintGL(self):
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        self.draw_grid()
+        pass
 
     def draw_grid(self):
         self.alfa = 10
@@ -71,4 +75,4 @@ if __name__ == '__main__':
     window.resize(600,600)
     app.exec_()
 
-# vim: ts=4 et sw=4 st=4
+# vim: ts=4 et sw=4 st=4 list
