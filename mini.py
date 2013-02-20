@@ -7,7 +7,6 @@ from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
 from pyglet.gl import *
 import pyglet
-from OpenGL.GLUT import *
 
 def vec(*args):
     return (GLfloat * len(args))(*args)
@@ -88,7 +87,6 @@ class GLWidget(QGLWidget):
         glFlush();
 
     def initializeGL(self):
-        glutInitDisplayMode(GLUT_DEPTH | GLUT_RGBA | GLUT_DOUBLE)
         glDisable(GL_TEXTURE_2D);
         glDisable(GL_DEPTH_TEST);
         glDisable(GL_COLOR_MATERIAL);
