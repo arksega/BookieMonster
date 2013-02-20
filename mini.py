@@ -141,6 +141,7 @@ class GLWidget(QGLWidget):
             print("{0}, {1}".format(event.x(), event.y()))
 
     def draw_2D(self):
+        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, vec(0.0, 0.0, 0.0, 1.0))
         self.draw_triangle()
         self.label.draw()
 
