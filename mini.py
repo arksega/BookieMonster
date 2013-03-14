@@ -87,21 +87,25 @@ class GLWidget(QGLWidget):
         glFlush();
 
     def initializeGL(self):
-        glDisable(GL_TEXTURE_2D);
-        glDisable(GL_DEPTH_TEST);
-        glDisable(GL_COLOR_MATERIAL);
-        glEnable(GL_BLEND);
-        glEnable(GL_POLYGON_SMOOTH);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glClearColor(1, 1, 1, 1);
-        self.obj1 = DinamicObj('sphere', 20)
+        glDisable(GL_TEXTURE_2D)
+        glDisable(GL_COLOR_MATERIAL)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA)
+        glEnable(GL_DEPTH_TEST)
+        glClearColor(0, 0, 0, 1)
+        glEnable(GL_POLYGON_SMOOTH)
+        glShadeModel(GL_SMOOTH)
+        glHint (GL_LINE_SMOOTH_HINT, GL_DONT_CARE)
+        # Load models
+        self.obj1 = DinamicObj('susan', 20)
+        self.obj2 = DinamicObj('planeZ', 20, pos=(0,0,0))
+        self.obj3 = DinamicObj('box', 20, pos=(0,0,0))
         # Materials
-        glMaterialfv(GL_FRONT, GL_SPECULAR, vec(0.0, 0.0, 0.0, 1.0))
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(1.0, 1.0, 1.0, 1.0))
         glMaterialfv(GL_FRONT, GL_SHININESS, vec(1.0));
         # Light zone
-        glLightfv(GL_LIGHT0, GL_POSITION, vec(0.5, 0.5, 0, 0))
+        glLightfv(GL_LIGHT0, GL_POSITION, vec(-0.5, -0.5, 1, 0))
         glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, vec(0.5, 0.5, 0))
+        glLightfv(GL_LIGHT0, GL_SPECULAR, vec(.5, .5, .5, .5))
         glEnable(GL_LIGHT0)
 
     def resizeGL(self, w, h):
@@ -141,17 +145,24 @@ class GLWidget(QGLWidget):
             print("{0}, {1}".format(event.x(), event.y()))
 
     def draw_2D(self):
-        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, vec(0.0, 0.0, 0.0, 1.0))
         self.draw_triangle()
         self.label.draw()
 
     def draw_3D(self):
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(10.0, 10.0, 10.0, 1.0))
         self.draw_grid()
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(20.0, 20.0, 20.0, 1.0))
+        self.obj2.draw_faces()
+        # Transparent:
+        glDepthMask (GL_FALSE)
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 10.0, 0.0, 0.5))
+        self.obj3.draw_faces()
         if self.fade:
-            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, vec(0.0, 0.4, 0.0, (self.posX + self.posY) / 100.0))
+            glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(8.0, 0.4, 0.0, (self.posX + self.posY) / 100.0))
         else:
-            glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, vec(1.0, 8.0, 1.0, 1.0))
+            glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.0, 10.0, 1.0))
         self.obj1.draw_faces()
+        glDepthMask (GL_TRUE)
 
     def draw_triangle(self):
         glColor3f(1,0,0)
