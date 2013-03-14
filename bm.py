@@ -208,8 +208,19 @@ class Map3D(Config):
         x1, x2 = extract(relation[plane_axis][edge_axis][3])
         y1, y2 = extract(relation[plane_axis][edge_axis][4])
         z1, z2 = extract(relation[plane_axis][edge_axis][5])
-        b1 = Box(width, height, thickness, color=color, pos=(x1, y1, z1))
-        b2 = Box(width, height, thickness, color=color, pos=(x2, y2, z2))
+        b1 = copy(self.originalBox)
+        b1.setAxes(Point(x1, y1, z1))
+        b1.color = color
+        b1.setScale(width, height, thickness)
+        b1.activate()
+
+        b2 = copy(self.originalBox)
+        b2.setAxes(Point(x2, y2, z2))
+        b2.color = color
+        b2.setScale(width, height, thickness)
+        b2.activate()
+        #b1 = Box(width, height, thickness, color=color, pos=(x1, y1, z1))
+        #b2 = Box(width, height, thickness, color=color, pos=(x2, y2, z2))
         return (b1, b2)
 
     def gen_limits(self, point, plane_axis, color):
@@ -241,17 +252,27 @@ class Map3D(Config):
                     local[axis] = getattr(point, axis) * (self.unit)
                 local[rel[attrib][3]] += (self.unit) / 2 * rel[attrib][4]
                 pos = (local['x'], local['y'], local['z'])
-                boxes.append(Box(w, h, t, color=color, pos=pos))
+                currentBox = copy(self.originalBox)
+                currentBox.setAxes(Point(*pos))
+                currentBox.color = color
+                currentBox.setScale(w, h, t)
+                currentBox.activate()
+                boxes.append(currentBox)
         return boxes
 
     def gen_books(self, p1, p2, color):
         books = []
         for point in p1.range(p2):
-            books.append(StaticObject(
-                    model_name='sphere', scale=4, color=color, grid=point))
+            currentBook = copy(self.originalBook)
+            currentBook.setAxes(Point(*currentBook.translatePos(point)))
+            currentBook.color = color
+            currentBook.activate()
+            books.append(currentBook)
         return books
 
     def generate(self):
+        self.originalBox = Box(1, 1, 1)
+        self.originalBook = StaticObject(model_name='sphere', scale=4)
         for plane in self.graph.plane.values():
             if plane.axis == 'z':
                 color_limit = (0.0, 0.0, 1.0, 1.0)
@@ -326,7 +347,10 @@ class Board(pyglet.window.Window):
         self.active_plane = 'z0'
         self.altPlane = None
 
-        self.susan = StaticObj('susan', 20, pos=(-50.0, -50.0, 0.0))
+        #self.susan = StaticObj('susan', 20, pos=(-50.0, -50.0, 0.0))
+        self.susan = StaticObj('susan', 20)
+        self.susan.setAxes(Point(-50.0, -50.0, 0.0))
+        self.susan.activate()
         '''for badguy in self.badGuys:
             self.setBadGuyStep(badguy)
             badguy.noMoreTarget = self.setBadGuyStep'''

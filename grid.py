@@ -32,40 +32,32 @@ class Importer(Object3D):
             self.thickness = scale
         self.scale = scale
         self.load_file(model_name)
-        colors = self.color * (len(self.faces))
-        self.vtx_list = self.batch.add(
-                len(self.faces), GL_TRIANGLES, None,
-                ('v3f', self.vertices), ('n3f', self.normals), ('c4f', colors))
+        self.model_name = model_name
 
     def __del__(self):
         self.vtx_list.delete()
 
     def load_file(self, model_name):
         self.vertices = []
-        self.faces = []
+        self.faces = {}
         self.normals = []
-        file = open(self.conf.modelsdir + model_name + '.obj')
+        model_file = open(self.conf.modelsdir + model_name + '.obj')
         f = 0
-        for line in file.readlines():
+        self.useMaterials = False
+        zone = 'main'
+        for line in model_file.readlines():
             if line[0:2] == 'v ':
                 self.vertices += [float(x) for x in line[2:].split()]
             elif line[0:2] == 'vn':
                 self.normals += [float(x) for x in line[2:].split()]
             elif line[0:2] == 'f ':
-                self.faces += [x for x in line[2:].split()]
+                self.faces[zone] = self.faces.get(zone, []) + [x for x in line[2:].split()]
                 f += 1
+            elif line.startswith('usemtl'):
+                zone = line.split()[1]
+                self.useMaterials = True
+        model_file.close()
 
-        real_vertices = []
-        real_normals = []
-        for vertex in self.faces:
-            vertex, normal = [int(n) for n in vertex.split('//')]
-            vertex -= 1
-            normal -= 1
-            for n in range(3):
-                real_vertices.append(self.vertices[vertex * 3 + n])
-                real_normals.append(self.normals[normal * 3 + n])
-        self.vertices = real_vertices
-        self.normals = real_normals
 
 
 class DinamicObj(Importer):
@@ -88,8 +80,36 @@ class StaticObj(Importer):
 
     def __init__(self, *args, **kwargs):
         super(StaticObj, self).__init__(*args, **kwargs)
+        real_vertices = []
+        real_normals = []
+        if not self.faces.has_key('main'):
+            print self.model_name
+            exit(1)
+        for vertex in self.faces['main']:
+            vertex, normal = [int(n) for n in vertex.split('//')]
+            vertex -= 1
+            normal -= 1
+            for n in range(3):
+                real_vertices.append(self.vertices[vertex * 3 + n])
+                real_normals.append(self.normals[normal * 3 + n])
+        self.vertices = real_vertices
+        self.normals = real_normals
+        print self.model_name
+        #print self.vertices, self.normals, self.colors
+        #print len(self.vertices), len(self.normals), len(self.colors), len(self.faces['main'])
+
+    def activate(self):
+        self.colors = self.color * (len(self.faces['main']))
+        self.vtx_list = self.batch.add(
+                len(self.faces['main']), GL_TRIANGLES, None,
+                ('v3f', self.vertices), ('n3f', self.normals), ('c4f', self.colors))
         self.__setScale()
         self.__setPos()
+
+    def setScale(self, w, h, t):
+       self.scale = w
+       self.height = h
+       self.thickness = t
 
     def __setScale(self):
         self.__setTransform(mul, (self.scale, self.height, self.thickness))
@@ -105,7 +125,7 @@ class StaticObj(Importer):
 
     def setOpacity(self, opacity):
         self.vtx_list.colors = (
-                self.vtx_list.colors[:3] + [opacity]) * len(self.faces)
+                self.vtx_list.colors[:3] + [opacity]) * len(self.faces['main'])
 
 
 class Box(StaticObj):
