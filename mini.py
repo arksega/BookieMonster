@@ -104,16 +104,6 @@ class GLWidget(QGLWidget):
         self.obj3.apply_materials = False
         self.obj4 = DinamicObj('monkeyMat', 10, pos=(-40,-10,0))
         self.originalBox = StaticObject(model_name='planeZ', scale=20)
-        self.s1 = copy(self.originalBox)
-        self.s2 = copy(self.s1)
-        self.s2.setAxes(Point(0,80,0))
-        self.s2.setScale(20, 10, 5)
-        self.s1.setAxes(Point(50,50,0))
-        self.s1.setScale(10, 5, 20)
-        self.s1.color = (0.0, 1.0, 0.0, 1.0)
-        self.s2.color = (0.0, 0.0, 1.0, 1.0)
-        self.s1.activate()
-        self.s2.activate()
         # Materials
         glMaterialfv(GL_FRONT, GL_SHININESS, vec(1.0));
         # Light zone
@@ -169,8 +159,6 @@ class GLWidget(QGLWidget):
         self.draw_grid()
         self.obj2.draw_faces()
         self.obj4.draw_faces()
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.0, 1.0, 1.0))
-        self.s1.batch.draw()
         # Transparent:
         glDepthMask (GL_FALSE)
         glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 1.0, 0.0, 0.5))
