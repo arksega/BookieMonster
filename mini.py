@@ -98,14 +98,30 @@ class GLWidget(QGLWidget):
         glHint (GL_LINE_SMOOTH_HINT, GL_DONT_CARE)
         # Load models
         self.obj1 = DinamicObj('susan', 20)
+        self.obj1.apply_materials = False
         self.obj2 = DinamicObj('planeZ', 20, pos=(0,0,0))
         self.obj3 = DinamicObj('box', 20, pos=(0,0,0))
+        self.obj3.apply_materials = False
+        self.obj4 = DinamicObj('monkeyMat', 10, pos=(-40,-10,0))
+        self.originalBox = StaticObject(model_name='planeZ', scale=20)
+        self.s1 = copy(self.originalBox)
+        self.s2 = copy(self.s1)
+        self.s2.setAxes(Point(0,80,0))
+        self.s2.setScale(20, 10, 5)
+        self.s1.setAxes(Point(50,50,0))
+        self.s1.setScale(10, 5, 20)
+        self.s1.color = (0.0, 1.0, 0.0, 1.0)
+        self.s2.color = (0.0, 0.0, 1.0, 1.0)
+        self.s1.activate()
+        self.s2.activate()
         # Materials
         glMaterialfv(GL_FRONT, GL_SHININESS, vec(1.0));
         # Light zone
-        glLightfv(GL_LIGHT0, GL_POSITION, vec(-0.5, -0.5, 1, 0))
-        glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, vec(0.5, 0.5, 0))
-        glLightfv(GL_LIGHT0, GL_SPECULAR, vec(.5, .5, .5, .5))
+        glLightfv(GL_LIGHT0, GL_AMBIENT, vec(10.0, 10.0, 10.0, 0))
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(50.0, 50.0, 50.0, 0))
+        glLightfv(GL_LIGHT0, GL_POSITION, vec(-100, -100, 50.0, 0))
+        glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, vec(0.5, 0.5, 0.0))
+        glLightfv(GL_LIGHT0, GL_SPECULAR, vec(0.5, 0.5, 0.5, 0.5))
         glEnable(GL_LIGHT0)
 
     def resizeGL(self, w, h):
@@ -149,16 +165,18 @@ class GLWidget(QGLWidget):
         self.label.draw()
 
     def draw_3D(self):
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(10.0, 10.0, 10.0, 1.0))
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(1.0, 1.0, 1.0, 1.0))
         self.draw_grid()
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(20.0, 20.0, 20.0, 1.0))
         self.obj2.draw_faces()
+        self.obj4.draw_faces()
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.0, 1.0, 1.0))
+        self.s1.batch.draw()
         # Transparent:
         glDepthMask (GL_FALSE)
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 10.0, 0.0, 0.5))
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 1.0, 0.0, 0.5))
         self.obj3.draw_faces()
         if self.fade:
-            glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(8.0, 0.4, 0.0, (self.posX + self.posY) / 100.0))
+            glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(1.0, 0.1, 0.0, (self.posX + self.posY) / 100.0))
         else:
             glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.0, 10.0, 1.0))
         self.obj1.draw_faces()

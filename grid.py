@@ -4,6 +4,9 @@ from operator import add, sub, mul, methodcaller
 from point import *
 from config import *
 
+def vec(*args):
+    return (GLfloat * len(args))(*args)
+
 
 class Object3D(Point):
 
@@ -63,15 +66,63 @@ class Importer(Object3D):
 class DinamicObj(Importer):
 
     def __init__(self, *args, **kwargs):
-        self.batch = Batch()
         super(DinamicObj, self).__init__(*args, **kwargs)
+        self.batchs = {}
+        self.apply_materials = True
+        for key in self.faces:
+            batch = Batch()
+            real_vertices = []
+            real_normals = []
+            for vertex in self.faces[key]:
+                vertex, normal = [int(n) for n in vertex.split('//')]
+                vertex -= 1
+                normal -= 1
+                for n in range(3):
+                    real_vertices.append(self.vertices[vertex * 3 + n])
+                    real_normals.append(self.normals[normal * 3 + n])
+            self.colors = self.color * (len(self.faces[key]))
+            self.vtx_list = batch.add(
+                    len(self.faces[key]), GL_TRIANGLES, None,
+                    ('v3f', real_vertices), ('n3f', real_normals), ('c4f', self.colors))
+            self.batchs[key] = batch
+        self.load_materials()
 
     def draw_faces(self):
         glPushMatrix()
         glTranslatef(self.x, self.y, self.z)
         glScalef(self.scale, self.height, self.thickness)
-        self.batch.draw()
+        if self.has_materials:
+            for key in self.batchs:
+                if self.apply_materials:
+                    self.materials[key]['Ka']
+                    glMaterialfv(GL_FRONT, GL_AMBIENT, self.materials[key]['Ka'])
+                    self.materials[key]['Kd']
+                    glMaterialfv(GL_FRONT, GL_DIFFUSE, self.materials[key]['Kd'])
+                    self.materials[key]['Ks']
+                    glMaterialfv(GL_FRONT, GL_SPECULAR, self.materials[key]['Ks'])
+                self.batchs[key].draw()
+        else:
+            for batch in self.batchs.values():
+                batch.draw()
         glPopMatrix()
+
+    def load_materials(self):
+        try:
+            material_file = open(self.conf.modelsdir + self.model_name + '.mtl')
+            self.materials = {}
+            for line in material_file:
+                if len(line) != 1:
+                    identifier = line.split()[0]
+                    if identifier == 'newmtl':
+                        material_name = line.split()[1]
+                        self.materials[material_name] = {}
+                    elif identifier in ('Ka', 'Kd','Ks'):
+                        values = [float(x) for x in line.split()[1:]]
+                        values += [1.0]
+                        self.materials[material_name][identifier] = vec(*values)
+            self.has_materials = True
+        except:
+            self.has_materials = False
 
 
 class StaticObj(Importer):
@@ -82,10 +133,8 @@ class StaticObj(Importer):
         super(StaticObj, self).__init__(*args, **kwargs)
         real_vertices = []
         real_normals = []
-        if not self.faces.has_key('main'):
-            print self.model_name
-            exit(1)
-        for vertex in self.faces['main']:
+        self.key = self.faces.keys()[0]
+        for vertex in self.faces[self.key]:
             vertex, normal = [int(n) for n in vertex.split('//')]
             vertex -= 1
             normal -= 1
@@ -99,9 +148,9 @@ class StaticObj(Importer):
         #print len(self.vertices), len(self.normals), len(self.colors), len(self.faces['main'])
 
     def activate(self):
-        self.colors = self.color * (len(self.faces['main']))
+        self.colors = self.color * (len(self.faces[self.key]))
         self.vtx_list = self.batch.add(
-                len(self.faces['main']), GL_TRIANGLES, None,
+                len(self.faces[self.key]), GL_TRIANGLES, None,
                 ('v3f', self.vertices), ('n3f', self.normals), ('c4f', self.colors))
         self.__setScale()
         self.__setPos()
@@ -125,7 +174,7 @@ class StaticObj(Importer):
 
     def setOpacity(self, opacity):
         self.vtx_list.colors = (
-                self.vtx_list.colors[:3] + [opacity]) * len(self.faces['main'])
+                self.vtx_list.colors[:3] + [opacity]) * len(self.faces[self.key])
 
 
 class Box(StaticObj):
