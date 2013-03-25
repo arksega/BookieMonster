@@ -366,6 +366,7 @@ class Board(pyglet.window.Window):
         self.map = Map3D(self.batch, self.loadMap(currentmap))
         self.walls = []
         self.pause = True
+        self.over = False
         self.label.text = 'Move you to start'
         for plane in self.map.graph.get_planes():
             self.walls += plane.walls
@@ -530,6 +531,7 @@ class Board(pyglet.window.Window):
             badguy = self.colliding(self.monster, self.badGuys)
             if badguy != None:
                 self.pause = True
+                self.over = True
                 self.label.text = 'GAME OVER'
                 self.label.color = (255,0,0,255)
                 self.go.play()
@@ -634,22 +636,22 @@ class Board(pyglet.window.Window):
             self.curParam[1] = round(self.curParam[1] - self.step, 1)
         elif symbol == key.NUM_3:
             self.curParam[2] = round(self.curParam[2] - self.step, 1)
-        elif symbol in [key.RIGHT, key.L, key.F]:
+        elif symbol in [key.RIGHT, key.L, key.F] and not self.over:
             self.pause = False
             self.monster.setDirection('e')
-        elif symbol in [key.LEFT, key.J, key.S]:
+        elif symbol in [key.LEFT, key.J, key.S] and not self.over:
             self.pause = False
             self.monster.setDirection('w')
-        elif symbol in [key.UP, key.I]:
+        elif symbol in [key.UP, key.I] and not self.over:
             self.pause = False
             self.monster.setDirection('n')
-        elif symbol in [key.DOWN, key.K]:
+        elif symbol in [key.DOWN, key.K] and not self.over:
             self.pause = False
             self.monster.setDirection('s')
-        elif symbol == key.E:
+        elif symbol == key.E and not self.over:
             self.pause = False
             self.monster.setDirection('u')
-        elif symbol == key.D:
+        elif symbol == key.D and not self.over:
             self.pause = False
             self.monster.setDirection('d')
 
