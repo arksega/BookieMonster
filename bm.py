@@ -388,7 +388,10 @@ class Board(pyglet.window.Window):
         for i in range(countBooks / 100):
             plane = random.choice(self.map.graph.plane.keys())
             print('Planex', plane)
-            closerp, fartherp = self.getPlaneCorners(self.map.graph.plane[plane], monsterp)
+            closerp, fartherp = self.getPlaneCorners(
+                    self.map.graph.plane[plane],
+                    monsterp
+                )
             badGuy = RobotObject(
                     self.allrel, fartherp, model_name='bad', scale=3.0,
                     color=(1.0, 0.0, 0.0, 1.0))
@@ -396,8 +399,7 @@ class Board(pyglet.window.Window):
             self.setBadGuyStep(badGuy)
             badGuy.noMoreTarget = self.setBadGuyStep
 
-
-    def getPlaneCorners(self, plane, origin = Point()):
+    def getPlaneCorners(self, plane, origin=Point()):
         closerp = plane.node[plane.node.keys()[0]]
         closerd = origin.distance(closerp)
         fartherp = plane.node[plane.node.keys()[0]]
@@ -533,7 +535,7 @@ class Board(pyglet.window.Window):
                 self.pause = True
                 self.over = True
                 self.label.text = 'GAME OVER'
-                self.label.color = (255,0,0,255)
+                self.label.color = (255, 0, 0, 255)
                 self.go.play()
 
         if self.first_update:
