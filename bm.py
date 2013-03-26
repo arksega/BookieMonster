@@ -2,14 +2,13 @@ import pyglet
 import re
 import random
 import os
-from pyglet.gl import *
-from pyglet.window import key
 from random import choice
 from copy import copy, deepcopy
-from event import Event
 from grid import *
 from config import *
 from collections import defaultdict
+from PyQt4.phonon import Phonon
+from PyQt4.QtCore import QTimer
 
 
 class _Nodes(dict):
@@ -290,54 +289,25 @@ class Map3D(Config):
                 plane.walls += self.gen_limits(point, plane.axis, color_limit)
 
 
-class Board(pyglet.window.Window):
+class Board(object):
 
     def __init__(self):
-        pyglet.window.Window.__init__(self, resizable=True)
-        self.eye = [-9.0, -10.0, 10.0]
-        self.focus = [0.0, 0.0, 0.0]
-        self.up = [0.0, 0.0, 1.0]
-        self.width = 1024
-        self.height = 1024
-        self.curParam = self.eye
         self.step = 10.0
-        #One-time GL setup
-        glClearColor(1, 1, 1, 1)
-        glColor3f(1, 0, 0)
-        glEnable(GL_DEPTH_TEST)
-        glEnable(GL_CULL_FACE)
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        glEnable(GL_LINE_SMOOTH)
-        glShadeModel(GL_SMOOTH)
-
-        def vec(*args):
-            return (GLfloat * len(args))(*args)
-        #glEnable(GL_LIGHTING)
-        self.lights = False
-        glEnable(GL_LIGHT0)
-        glLightfv(GL_LIGHT0, GL_POSITION, vec(-150, -150, 150, 0))
-        glLightfv(GL_LIGHT0, GL_SPECULAR, vec(.5, .5, .5, .5))
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(0.1, 0.1, .1, 1.0))
 
         self.batch = StaticObj.batch
-        self.perspective = False
         self.size = 8
-
-        self.gen_axes()
+        self.pause = True
 
         self.alpha = 0.0
-        self.label_batch = pyglet.graphics.Batch()
-        self.label = pyglet.text.Label('0',
-                                       font_name='White Rabbit',
-                                       font_size=16,
-                                       x=0,
-                                       y=0,
-                                       batch=self.label_batch,
-                                       color=(0, 255, 255, 255))
+        pyglet.font.add_file('data/fonts/whitrabt.ttf')
+        self.label = pyglet.text.Label(
+               font_name='White Rabbit',
+               font_size=32,
+               color=(0, 255, 255, 255))
         self.gconf = Config()  # Config file values
         self.pattern = re.compile(r'\s+')
         self.maps = os.listdir('data/maps')
+        self.maps.sort()
         self.total_books = 0
         self.eaten_books = 0
         self.first_update = True
@@ -347,19 +317,15 @@ class Board(pyglet.window.Window):
         self.active_plane = 'z0'
         self.altPlane = None
 
-        #self.susan = StaticObj('susan', 20, pos=(-50.0, -50.0, 0.0))
-        self.susan = StaticObj('susan', 20)
-        self.susan.setAxes(Point(-50.0, -50.0, 0.0))
-        self.susan.activate()
-        '''for badguy in self.badGuys:
-            self.setBadGuyStep(badguy)
-            badguy.noMoreTarget = self.setBadGuyStep'''
-        media = pyglet.resource.media
-        self.pick = media('data/sound/get.wav', streaming=False)
-        self.win = media('data/sound/win.wav', streaming=False)
-        self.go = media('data/sound/game-over.wav', streaming=False)
-        # Uncomment this line for a wireframe view
-        # glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        self.pick = self.loadSound('data/sound/get.wav')
+        self.win = self.loadSound('data/sound/win.wav')
+        self.go = self.loadSound('data/sound/game-over.wav')
+
+    def loadSound(self, source):
+        return Phonon.createPlayer(
+                Phonon.NoCategory,
+                Phonon.MediaSource(source)
+        )
 
     def getMap(self, *args):
         currentmap = self.maps.pop(0)
@@ -367,7 +333,6 @@ class Board(pyglet.window.Window):
         self.walls = []
         self.pause = True
         self.over = False
-        self.label.text = 'Move you to start'
         for plane in self.map.graph.get_planes():
             self.walls += plane.walls
             self.total_books += len(plane.books)
@@ -393,7 +358,7 @@ class Board(pyglet.window.Window):
                     monsterp
                 )
             badGuy = RobotObject(
-                    self.allrel, fartherp, model_name='bad', scale=3.0,
+                    self.allrel, fartherp, model_name='monkeyMat', scale=3.0,
                     color=(1.0, 0.0, 0.0, 1.0))
             self.badGuys.append(badGuy)
             self.setBadGuyStep(badGuy)
@@ -422,14 +387,14 @@ class Board(pyglet.window.Window):
         values = []
         for axis in plane.axes:
             num = getattr(plane, axis)
-            if num != None:
+            if num is not None:
                 values.append(axis + str(num))
         print values
         if len(values) > 1:
             values.remove(self.active_plane)
             self.altPlane = values[0]
             self.set_plane_opacity(g.plane[self.altPlane], 0.4)
-        elif self.altPlane != None:
+        elif self.altPlane is not None:
             if self.monster.speed.axis != 'x':
                 if self.monster.speed.axis == self.active_plane[0]:
                     self.set_plane_opacity(g.plane[self.active_plane], 0.1)
@@ -499,7 +464,7 @@ class Board(pyglet.window.Window):
             current = frontier.pop()
             if current == destination:
                 path = []
-                while current.parent != None:
+                while current.parent is not None:
                     path.insert(0, current)
                     current = current.parent
                 return path
@@ -512,9 +477,8 @@ class Board(pyglet.window.Window):
                     frontier.append(son)
         raise ValueError("Path no found")
 
-    def update(self, dt):
-
-        if self.pause == False:
+    def update(self):
+        if self.pause is False:
             self.monster.moveForward()
             self.monster.updateGrids()
 
@@ -524,14 +488,14 @@ class Board(pyglet.window.Window):
 
             for plane in self.map.graph.get_planes():
                 book = self.colliding(self.monster, plane.books)
-                if book != None:
+                if book is not None:
                     plane.books.remove(book)
                     self.pick.play()
                     self.eaten_books += 1
                     self.label.text = str(self.eaten_books * 100)
                     break
             badguy = self.colliding(self.monster, self.badGuys)
-            if badguy != None:
+            if badguy is not None:
                 self.pause = True
                 self.over = True
                 self.label.text = 'GAME OVER'
@@ -542,123 +506,39 @@ class Board(pyglet.window.Window):
             self.eaten_books -= 1
             self.total_books -= 1
             self.first_update = False
+            self.label.text = 'Move you to start'
 
         if self.total_books == self.eaten_books and not self.pause:
             if len(self.maps) < 1:
                 self.label.text = 'Game completed'
             else:
                 self.label.text = 'Winner!!'
-                pyglet.clock.schedule_once(self.getMap, 3)
+                QTimer.singleShot(2000, self.getMap)
             self.pause = True
             self.win.play()
 
-    def gen_axes(self):
-        glLineWidth(2)
+    def draw_2D(self):
+        self.label.draw()
 
-        vertex_list = self.batch.add(6, GL_LINES, None,
-            ('v3f/stream', (0, 0, 0,  100, 0, 0,
-                            0, 0, 0,  0, 100, 0,
-                            0, 0, 0,  0, 0, 100)
-            ),
-            ('c4B/stream', (255, 0, 0, 255,  255, 0, 0, 255,
-                            0, 255, 0, 255,  0, 255, 0, 255,
-                            0, 0, 255, 255,  0, 0, 255, 255)
-            )
-        )
-
-        glLineWidth(1)
-
-    def on_draw(self):
-        # Clear buffers
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
+    def draw_3D(self):
         # Draw Grid
         self.map.draw_grid()
+        for plane in self.map.graph.plane:
+            if plane.startswith('z'):
+                glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.1, 0.0, 1.0))
+            else:
+                glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.1, 0.1, 1.0))
+            for wall in self.map.graph.plane[plane].walls:
+                wall.vtx_list.draw(GL_TRIANGLES)
+            glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.1, 0.1, 0.0, 1.0))
+            for book in self.map.graph.plane[plane].books:
+                book.vtx_list.draw(GL_TRIANGLES)
 
-        glPushMatrix()
-        glTranslatef(-100, 100, 160)
-        glRotatef(90, 1, 0, 0)
-        glRotatef(-45, 0, 1, 0)
-        self.label_batch.draw()
-        glPopMatrix()
-
-        self.batch.draw()
+        #self.batch.draw()
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.0, 1.0, 1.0))
+        self.monster.apply_materials = False
         self.monster.draw_faces()
         [guy.draw_faces() for guy in self.badGuys]
-
-    def on_resize(self, width, height):
-        glViewport(0, 0, self.width, self.height)
-        glMatrixMode(GL_PROJECTION)
-        self.initView()
-        return pyglet.event.EVENT_HANDLED
-
-    def initView(self):
-        glLoadIdentity()
-        if self.perspective:
-            gluPerspective(
-                90.0,                                    # Field Of View
-                float(self.width) / float(self.height),  # aspect ratio
-                1.0,                                     # z near
-                1000.0)                                  # z far
-        else:
-            glOrtho(-150, 150, -150, 150, -300, 300)
-        gluLookAt(*(self.eye + self.focus + self.up))
-
-    def on_key_press(self, symbol, modifiers):
-        glLoadIdentity()
-        if symbol == key.P:
-            #self.perspective = not self.perspective
-            self.label.text = 'Move you to resume'
-            self.pause = True
-        elif symbol == key.O:
-            if self.lights:
-                self.lights = False
-                glDisable(GL_LIGHTING)
-            else:
-                self.lights = True
-                glEnable(GL_LIGHTING)
-        elif symbol == key.X:
-            self.curParam = self.eye
-            self.step = 10.0
-        elif symbol == key.Y:
-            self.curParam = self.focus
-            self.step = 10.0
-        elif symbol == key.Z:
-            self.step = 0.1
-            self.curParam = self.up
-        elif symbol == key.NUM_7:
-            self.curParam[0] = round(self.curParam[0] + self.step, 1)
-        elif symbol == key.NUM_8:
-            self.curParam[1] = round(self.curParam[1] + self.step, 1)
-        elif symbol == key.NUM_9:
-            self.curParam[2] = round(self.curParam[2] + self.step, 1)
-        elif symbol == key.NUM_1:
-            self.curParam[0] = round(self.curParam[0] - self.step, 1)
-        elif symbol == key.NUM_2:
-            self.curParam[1] = round(self.curParam[1] - self.step, 1)
-        elif symbol == key.NUM_3:
-            self.curParam[2] = round(self.curParam[2] - self.step, 1)
-        elif symbol in [key.RIGHT, key.L, key.F] and not self.over:
-            self.pause = False
-            self.monster.setDirection('e')
-        elif symbol in [key.LEFT, key.J, key.S] and not self.over:
-            self.pause = False
-            self.monster.setDirection('w')
-        elif symbol in [key.UP, key.I] and not self.over:
-            self.pause = False
-            self.monster.setDirection('n')
-        elif symbol in [key.DOWN, key.K] and not self.over:
-            self.pause = False
-            self.monster.setDirection('s')
-        elif symbol == key.E and not self.over:
-            self.pause = False
-            self.monster.setDirection('u')
-        elif symbol == key.D and not self.over:
-            self.pause = False
-            self.monster.setDirection('d')
-
-        self.initView()
-        return pyglet.event.EVENT_HANDLED
 
     def colliding(self, object1, objectList):
         for object2 in objectList:
@@ -669,12 +549,7 @@ class Board(pyglet.window.Window):
             distanceY = abs(object1.y - object2.y)
             distanceZ = abs(object1.z - object2.z)
             if  distanceX < minDistanceX \
-                    and  distanceY < minDistanceY \
-                    and  distanceZ < minDistanceZ:
+                    and distanceY < minDistanceY \
+                    and distanceZ < minDistanceZ:
                 return object2
         return None
-
-if __name__ == '__main__':
-    win = Board()
-    pyglet.clock.schedule_interval(win.update, 0.033)
-    pyglet.app.run()

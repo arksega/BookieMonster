@@ -1,19 +1,21 @@
 #!/bin/python3
 import sys
-import os
 from grid import *
+from bm import *
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
+#import pyglet
+pyglet.options['debug_gl'] = False
 from pyglet.gl import *
-import pyglet
+
 
 def vec(*args):
     return (GLfloat * len(args))(*args)
 
 
 class MainWindow(QMainWindow):
-    
+
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
         self.pause = QPushButton('Pausar')
@@ -25,8 +27,8 @@ class MainWindow(QMainWindow):
         self.fade.clicked.connect(self.fadeToggle)
         self.gl = GLWidget()
         gp = QGridLayout()
-        gp.addWidget(self.pause, 1, 0)
-        gp.addWidget(self.fade, 1, 1)
+        #gp.addWidget(self.pause, 1, 0)
+        #gp.addWidget(self.fade, 1, 1)
         gp.addWidget(self.gl, 0, 0, 1, 2)
         self.frame = QWidget()
         self.frame.setLayout(gp)
@@ -38,45 +40,37 @@ class MainWindow(QMainWindow):
     def fadeToggle(self):
         self.gl.fade = not self.gl.fade
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_P:
+            self.gl.board.label.text = 'Move you to resume'
+            self.gl.board.pause = True
+        elif event.key() in [Qt.Key_Right, Qt.Key_L, Qt.Key_F]:
+            self.gl.board.pause = False
+            self.gl.board.monster.setDirection('e')
+        elif event.key() in [Qt.Key_Left, Qt.Key_J, Qt.Key_S]:
+            self.gl.board.pause = False
+            self.gl.board.monster.setDirection('w')
+        elif event.key() in [Qt.Key_Up, Qt.Key_I]:
+            self.gl.board.pause = False
+            self.gl.board.monster.setDirection('n')
+        elif event.key() in [Qt.Key_Down, Qt.Key_K]:
+            self.gl.board.pause = False
+            self.gl.board.monster.setDirection('s')
+        elif event.key() == Qt.Key_E:
+            self.gl.board.pause = False
+            self.gl.board.monster.setDirection('u')
+        elif event.key() == Qt.Key_D:
+            self.gl.board.pause = False
+            self.gl.board.monster.setDirection('d')
+
+
 class GLWidget(QGLWidget):
 
     def __init__(self, parent=None):
         QGLWidget.__init__(self, parent)
         self.timer = QTimer()
         self.timer.timeout.connect(self.updateGL)
-        self.timer.start(333)
-        self.deltaY = 0
-        self.deltaX = 0
-        self.posX = 0
-        self.posY = 0
-        self.changeX = True
-        self.pause = False
-        self.fade = True
-        pyglet.font.add_file('data/fonts/whitrabt.ttf')
-        self.font_size = 32
-        self.label = pyglet.text.Label(
-                font_name='White Rabbit', 
-                font_size=self.font_size, 
-                color=(0, 255, 255, 255))
-
-    def move(self):
-        if self.posX == 0 and self.posY == 0:
-            if self.changeX:
-                self.deltaX, self.deltaY  = 0, 10
-                self.changeX = not self.changeX
-            else:
-                self.deltaX, self.deltaY  = 10, 0
-                self.changeX = not self.changeX
-
-        if self.posX == 100:
-            self.deltaX = -10
-
-        if self.posY == 100:
-            self.deltaY = -10
-
-        self.posX += self.deltaX
-        self.posY += self.deltaY
-        self.obj1.setAxes(Point(self.posX, self.posY, 0))
+        self.timer.start(33)
 
     def draw(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -84,31 +78,25 @@ class GLWidget(QGLWidget):
         self.draw_3D()
         self.setup2D(self.w, self.h)
         self.draw_2D()
-        glFlush();
+        glFlush()
 
     def initializeGL(self):
         glDisable(GL_TEXTURE_2D)
         glDisable(GL_COLOR_MATERIAL)
         glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable(GL_DEPTH_TEST)
-        glClearColor(0, 0, 0, 1)
+        glClearColor(1, 1, 1, 1)
         glEnable(GL_POLYGON_SMOOTH)
         glShadeModel(GL_SMOOTH)
-        glHint (GL_LINE_SMOOTH_HINT, GL_DONT_CARE)
+        glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE)
         # Load models
-        self.obj1 = DinamicObj('susan', 20)
-        self.obj1.apply_materials = False
-        self.obj2 = DinamicObj('planeZ', 20, pos=(0,0,0))
-        self.obj3 = DinamicObj('box', 20, pos=(0,0,0))
-        self.obj3.apply_materials = False
-        self.obj4 = DinamicObj('monkeyMat', 10, pos=(-40,-10,0))
-        self.originalBox = StaticObject(model_name='planeZ', scale=20)
+        self.board = Board()
         # Materials
-        glMaterialfv(GL_FRONT, GL_SHININESS, vec(1.0));
+        glMaterialfv(GL_FRONT, GL_SHININESS, vec(1.0))
         # Light zone
-        glLightfv(GL_LIGHT0, GL_AMBIENT, vec(10.0, 10.0, 10.0, 0))
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(50.0, 50.0, 50.0, 0))
+        glLightfv(GL_LIGHT0, GL_AMBIENT, vec(1.0, 1.0, 1.0, 0))
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(10.0, 10.0, 10.0, 0))
         glLightfv(GL_LIGHT0, GL_POSITION, vec(-100, -100, 50.0, 0))
         glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, vec(0.5, 0.5, 0.0))
         glLightfv(GL_LIGHT0, GL_SPECULAR, vec(0.5, 0.5, 0.5, 0.5))
@@ -118,13 +106,13 @@ class GLWidget(QGLWidget):
         glViewport(0, 0, w, h)
         self.w = w
         self.h = h
-        self.label.y = h - self.font_size
+        self.board.label.y = h - 32
 
     def setup3D(self, w, h):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(40., w / float(h), 0.5, 500.0)
-        gluLookAt(-100, -100, 100, 0, 0, 0, 0, 0, 1)
+        gluPerspective(45., w / float(h), 1.0, 1000.0)
+        gluLookAt(-200, -200, 200, 0, 0, 0, 0, 0, 1)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         glEnable(GL_LIGHTING)
@@ -138,72 +126,32 @@ class GLWidget(QGLWidget):
         glDisable(GL_LIGHTING)
 
     def updateGL(self):
-        if not self.pause:
-            self.move()
-        self.label.text = 'X:' + str(self.posX)
+        self.board.update()
         self.glDraw()
 
     def paintGL(self):
         self.draw()
         pass
 
-    def mouseMoveEvent(self, event) :
-            print("{0}, {1}".format(event.x(), event.y()))
+    def keyPressEvent(self, event):
+        print (event)
+
+    def mouseMoveEvent(self, event):
+            print(("{0}, {1}".format(event.x(), event.y())))
 
     def draw_2D(self):
-        self.draw_triangle()
-        self.label.draw()
+        self.board.draw_2D()
 
     def draw_3D(self):
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(1.0, 1.0, 1.0, 1.0))
-        self.draw_grid()
-        self.obj2.draw_faces()
-        self.obj4.draw_faces()
-        # Transparent:
-        glDepthMask (GL_FALSE)
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 1.0, 0.0, 0.5))
-        self.obj3.draw_faces()
-        if self.fade:
-            glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(1.0, 0.1, 0.0, (self.posX + self.posY) / 100.0))
-        else:
-            glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.0, 10.0, 1.0))
-        self.obj1.draw_faces()
-        glDepthMask (GL_TRUE)
-
-    def draw_triangle(self):
-        glColor3f(1,0,0)
-        glBegin(GL_POLYGON)
-        glVertex2f(0,0)
-        glVertex2f(10,50)
-        glVertex2f(50,10)
-        glEnd()
-
-    def draw_grid(self):
-        self.alfa = 10
-        self.beta = 2
-        self.gridSize = 10
-        self.unit = self.beta + self.alfa
-        glBegin(GL_LINES)
-        glColor3f(0.0, 0.0, 0.0)
-        end = self.unit * self.gridSize + self.alfa / 2
-        step = self.alfa + self.beta
-        for i in range(0, self.gridSize * 2 + 2):
-            glVertex3i(end - i * step, -end - self.beta, 0)
-            glVertex3i(end - i * step,  end + self.beta, 0)
-            glVertex3i(end - i * step + self.beta, -end - self.beta, 0)
-            glVertex3i(end - i * step + self.beta,  end + self.beta, 0)
-
-            glVertex3i(-end - self.beta, end - i * step, 0)
-            glVertex3i(end + self.beta, end - i * step, 0)
-            glVertex3i(-end - self.beta, end - i * step + self.beta, 0)
-            glVertex3i(end + self.beta, end - i * step + self.beta, 0)
-        glEnd()
+        self.board.draw_3D()
+        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.1, 0.0, 1.0))
+        pass
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    window.resize(600,600)
+    window.resize(800, 800)
     app.exec_()
 
 # vim: ts=4 et sw=4 st=4 list
