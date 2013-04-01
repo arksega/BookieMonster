@@ -62,6 +62,8 @@ class MainWindow(QMainWindow):
         elif event.key() == Qt.Key_D:
             self.gl.board.pause = False
             self.gl.board.monster.setDirection('d')
+        elif event.key() == Qt.Key_X:
+            self.gl.board.monster.toggleDrivenMode()
 
 
 class GLWidget(QGLWidget):

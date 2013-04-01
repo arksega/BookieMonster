@@ -4,13 +4,14 @@ from operator import add, sub, mul, methodcaller
 from point import *
 from config import *
 
+
 def vec(*args):
     return (GLfloat * len(args))(*args)
 
 
 class Object3D(Point):
 
-    def __init__(self, width, height, thickness, \
+    def __init__(self, width, height, thickness,
             color=(0.0, 0.0, 0.0, 1.0), pos=(0, 0, 0)):
         super(Object3D, self).__init__(*pos)
         self.color = color
@@ -60,7 +61,6 @@ class Importer(Object3D):
                 zone = line.split()[1]
                 self.useMaterials = True
         model_file.close()
-
 
 
 class DinamicObj(Importer):
@@ -199,8 +199,8 @@ class GridObj(object):
 class StaticObject(StaticObj, GridObj):
 
     def __init__(self, grid=Point(), **kwargs):
-        super(StaticObject, self).__init__(kwargs.pop('model_name'), \
-                                        kwargs.pop('scale'), \
+        super(StaticObject, self).__init__(kwargs.pop('model_name'),
+                                        kwargs.pop('scale'),
                                         pos=self.translatePos(grid), **kwargs)
 
 
@@ -211,8 +211,8 @@ class MobileObject(DinamicObj, GridObj):
 
     def __init__(self, vertices, grid=Point(), **kwargs):
         assert isinstance(vertices, dict)
-        super(MobileObject, self).__init__(kwargs.pop('model_name'), \
-                                        kwargs.pop('scale'), \
+        super(MobileObject, self).__init__(kwargs.pop('model_name'),
+                                        kwargs.pop('scale'),
                                         pos=self.translatePos(grid), **kwargs)
         self.grid = deepcopy(grid)
         self.proxGrid = deepcopy(grid)
@@ -220,6 +220,11 @@ class MobileObject(DinamicObj, GridObj):
         self.speed = Speed()
         self.vertices = vertices
         self.updateConnections()
+        self.drivenMode = False
+        self.movements = []
+
+    def toggleDrivenMode(self):
+        self.drivenMode = not self.drivenMode
 
     def updateConnections(self):
         self.connections = self.vertices[self.origin] + [self.origin]
@@ -230,6 +235,12 @@ class MobileObject(DinamicObj, GridObj):
             self.updateProxGrid(proxGrid)
         elif self.isCentered() and self.grid != self.proxGrid:
             self.updateMainGrid(proxGrid)
+            if self.drivenMode:
+                print 'Driven'
+                if self.movements == []:
+                    self.stop()
+                else:
+                    self.speed.set(*self.movements.pop(0))
 
     def updateMainGrid(self, grid):
         self.grid = deepcopy(self.proxGrid)
@@ -272,7 +283,7 @@ class MobileObject(DinamicObj, GridObj):
         return count == 0
 
     def calcTarget(self):
-        if self.speed.axis == None:
+        if self.speed.axis is None:
             return None
         for vertex in self.connections:
             try:
@@ -308,6 +319,12 @@ class MobileObject(DinamicObj, GridObj):
             setattr(self.speed, axis, 0)
         self.speed.axis = None
 
+    def isMoving(self):
+        speed = 0
+        for axis in self.speed.axes:
+            speed += 1 if self.speed.axis is None else 0
+        return speed == 0
+
 
 class HumanObject(MobileObject):
 
@@ -335,10 +352,16 @@ class HumanObject(MobileObject):
             self.stop()
 
     def setDirection(self, direction):
-        if not getattr(self.proxGrid, direction):
+        if self.drivenMode:
+            if not self.isMoving():
+                self.speed.set(*self.direction_speed[direction])
+            else:
+                self.movements.append(self.direction_speed[direction])
+                print 'Movements:', self.movements
+        elif not getattr(self.proxGrid, direction):
             axis = self.direction_speed[direction][0]
             val = self.direction_speed[direction][1]
-            if self.speed.axis == None or self.speed.axis == axis:
+            if self.speed.axis is None or self.speed.axis == axis:
                 self.speed.set(axis, val)
             else:
                 self.pendingAction = (axis, val)
