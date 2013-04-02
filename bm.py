@@ -48,6 +48,7 @@ class Graph(object):
         self.edge = _DictList()
         self._edge = _DictList()
         self.node = _Nodes()
+        self.allDots = _Nodes()
 
     def __repr__(self):
         string = 'Vertices:\n'
@@ -61,6 +62,9 @@ class Graph(object):
         a.syncLimits(b)
         self.edge[a] += b
         self._edge[b] += a
+        for x in a.range(b):
+            y = self.allDots[x]
+            y.downLimits(x.getValidDirections())
 
     def get_all_relations(self):
         if not hasattr(self, 'global_edge'):

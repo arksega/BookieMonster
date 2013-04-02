@@ -105,6 +105,8 @@ class Vertex(Point):
         'z': 'ud',
     }
 
+    directions = ['e', 'w', 'n', 's', 'u', 'd']
+
     def __repr__(self):
         return 'Vertex' + repr((self.x, self.y, self.z))
 
@@ -120,6 +122,14 @@ class Vertex(Point):
         for limit in self.axis_limits[axis]:
             setattr(self, limit, False)
 
+    def upLimits(self, limits=directions):
+        for limit in limits:
+            setattr(self, limit, True)
+
+    def downLimits(self, limits=directions):
+        for limit in limits:
+            setattr(self, limit, False)
+
     def syncLimits(self, other):
         axis = self.getOrientation(other)
         vmin, vmax = self, other
@@ -127,6 +137,22 @@ class Vertex(Point):
             vmin, vmax = vmax, vmin
         for vertex, limit in zip((vmin, vmax), self.axis_limits[axis]):
             setattr(vertex, limit, False)
+
+    def getValidDirections(self):
+        valid = []
+        for direction in self.directions:
+            if not getattr(self, direction):
+                valid.append(direction)
+        return valid
+
+    def range(self, other):
+        points = Point.range(self, other)
+        axis = self.getOrientation(other)
+        [point.upLimits() for point in points]
+        points[0].syncLimits(points[-1])
+        for point in points[1:-1]:
+            point.disableLimits(axis)
+        return points
 
 
 class Speed(Point):
