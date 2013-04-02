@@ -33,12 +33,23 @@ class MainWindow(QMainWindow):
         self.frame = QWidget()
         self.frame.setLayout(gp)
         self.setCentralWidget(self.frame)
+        toolBar = self.addToolBar('Principal')
+        toolBar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        autoicon = QIcon('/usr/share/icons/oxygen/48x48/actions/media-playback-start.png')
+        autoicon.addFile('/usr/share/icons/oxygen/48x48/actions/media-playback-stop.png',mode=2,state=0)
+        auto = QAction(autoicon,'AutoPlay', self)
+        auto.triggered.connect(self.autoToggle)
+        auto.setCheckable(True)
+        toolBar.addAction(auto)
 
     def pauseToggle(self):
         self.gl.pause = not self.gl.pause
 
     def fadeToggle(self):
         self.gl.fade = not self.gl.fade
+
+    def autoToggle(self):
+        self.gl.board.autoMove()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_P:

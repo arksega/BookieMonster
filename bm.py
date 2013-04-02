@@ -384,6 +384,9 @@ class Board(object):
                 fartherp = node
         return closerp, fartherp
 
+    def autoMove(self):
+        print self.monster.grid
+
     def updatePlane(self):
         g = self.map.graph
         plane = self.monster.proxGrid.plane

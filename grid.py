@@ -236,7 +236,7 @@ class MobileObject(DinamicObj, GridObj):
         elif self.isCentered() and self.grid != self.proxGrid:
             self.updateMainGrid(proxGrid)
             if self.drivenMode:
-                print 'Driven'
+                print self.grid.getValidDirections()
                 if self.movements == []:
                     self.stop()
                 else:
