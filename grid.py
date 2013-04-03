@@ -39,7 +39,8 @@ class Importer(Object3D):
         self.model_name = model_name
 
     def __del__(self):
-        self.vtx_list.delete()
+        if hasattr(self, 'vtx_list'):
+            self.vtx_list.delete()
 
     def load_file(self, model_name):
         self.vertices = []
@@ -143,7 +144,7 @@ class StaticObj(Importer):
                 real_normals.append(self.normals[normal * 3 + n])
         self.vertices = real_vertices
         self.normals = real_normals
-        print self.model_name
+        #print self.model_name
         #print self.vertices, self.normals, self.colors
         #print len(self.vertices), len(self.normals), len(self.colors), len(self.faces['main'])
 
@@ -236,7 +237,6 @@ class MobileObject(DinamicObj, GridObj):
         elif self.isCentered() and self.grid != self.proxGrid:
             self.updateMainGrid(proxGrid)
             if self.drivenMode:
-                print self.grid.getValidDirections()
                 if self.movements == []:
                     self.stop()
                 else:
@@ -357,7 +357,6 @@ class HumanObject(MobileObject):
                 self.speed.set(*self.direction_speed[direction])
             else:
                 self.movements.append(self.direction_speed[direction])
-                print 'Movements:', self.movements
         elif not getattr(self.proxGrid, direction):
             axis = self.direction_speed[direction][0]
             val = self.direction_speed[direction][1]

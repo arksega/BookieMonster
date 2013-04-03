@@ -35,6 +35,12 @@ class _Nodes(dict):
             text += str(value) + ' '
         return text
 
+    def count(self):
+        count = 0
+        for value in self.values():
+            count += value.food
+        return count
+
 
 class _DictList(dict):
 
@@ -365,7 +371,7 @@ class Board(object):
                 self.allrel, monsterp, model_name='sphere', scale=self.size,
                 color=(1.0, 0.0, 0.1, 1.0))
         self.monster.speed.onChange += self.resetBadGuysStep
-        self.monster.onProxGridChange += self.updatePlane
+        #self.monster.onProxGridChange += self.updatePlane
         countBooks = 0
         for plane in self.map.graph.get_planes():
             countBooks += len(plane.books)
@@ -386,9 +392,6 @@ class Board(object):
             badGuy.noMoreTarget = self.setBadGuyStep
         self.allDots = self.map.graph.allDots
         self.allDots[self.monster.grid].food = False
-        print 'allDots'
-        for x in self.allDots.values():
-            print x, x.getValidDirections()
 
     def getPlaneCorners(self, plane, origin=Point()):
         closerp = plane.node[plane.node.keys()[0]]
@@ -397,7 +400,6 @@ class Board(object):
         fartherd = origin.distance(fartherp)
         for node in plane.node:
             distance = origin.distance(node)
-            print('meter', origin, node, distance)
             if distance < closerd:
                 closerd = distance
                 closerp = node
@@ -408,40 +410,19 @@ class Board(object):
 
     def autoMove(self):
         a = time.time()
-        result = self.breadthFirstSearch()
+        result = self.aStarSearch(allDotsProblem(self.allDots, self.monster.grid))
         b = time.time()
         print 'Time: ', b - a
+        print 'Stemps:', len(result)
         self.pause = False
         self.monster.toggleDrivenMode()
         for direction in result:
             self.monster.setDirection(direction)
 
-    def isGoal(self, node):
-        count = 0
-        for dot in node[1]:
-            count += 1 if dot.food else 0
-        return count == 0
-
-    def getSuccessors(self, node):
-        successors = []
-        vertex = node[0]
-        dots = node[1]
-        h1 = hash(dots)
-        for direction in vertex.getValidDirections():
-            nextDots = deepcopy(dots)
-            nextNode = nextDots[vertex.shift(direction)]
-            nextDots[nextNode].food = False
-            successors.append(((nextNode, nextDots), direction, 1))
-            #print 'successors', nextNode, nextDots
-        h2 = hash(dots)
-        if h1 != h2:
-            raise ValueError('Dots changed')
-        return successors
-
-    def breadthFirstSearch(self):
+    def breadthFirstSearch(self, problem, returnPath=True):
         closed = set()
         fringe = PriorityQueue()
-        node = (self.monster.grid, self.allDots)
+        node = problem.getStartState()
         fringe.push(node, 1)
 
         path = {}
@@ -454,14 +435,54 @@ class Board(object):
                 exit(0)
                 return []
             node = fringe.pop()
-            if self.isGoal(node):
-                return path[node]
+            if problem.isGoal(node):
+                if returnPath:
+                    return path[node]
+                else:
+                    return node
             if not node in closed:
                 closed.add(node)
-                for childNode in self.getSuccessors(node):
+                for childNode in problem.getSuccessors(node):
                     newNode = childNode[0]
                     path[newNode] = path[node] + [childNode[1]]
                     fringe.push(newNode, len(path[newNode]))
+
+    def heuristic(self, state, board):
+        #print 'State', state
+        vertex, dots = state
+        cDots = dots.count()
+        if cDots < board.count():
+            return 0
+        else:
+            #print 'Cortando', vertex, board
+            closerdot = self.breadthFirstSearch(closerDot(board, vertex), False)
+            distance = vertex.distance(closerdot)
+            #print 'Closer', closerdot, board, vertex
+            return cDots + distance ** 2
+
+    def aStarSearch(self, problem):
+        closed = set()
+        fringe = PriorityQueue()
+        node = problem.getStartState()
+        fringe.push(node, 0)
+        path = {}
+        path[node] = []
+        while True:
+            if fringe.isEmpty():
+                return []
+            node = fringe.pop()
+            if problem.isGoal(node):
+                return path[node]
+            if not node in closed:
+                closed.add(node)
+                for childNode in problem.getSuccessors(node):
+                    newNode = childNode[0]
+                    path[newNode] = path[node] + [childNode[1]]
+                    fringe.push(
+                        newNode,
+                        len(path[newNode]) + self.heuristic(newNode, node[1])
+                    )
+                #print fringe
 
     def updatePlane(self):
         g = self.map.graph
@@ -654,3 +675,56 @@ class PriorityQueue:
 
     def isEmpty(self):
         return len(self.heap) == 0
+
+    def __str__(self):
+        text = ''
+        for v in self.heap:
+            text += str(v)
+        return text
+
+class allDotsProblem(object):
+
+    def __init__(self, dots, init):
+        self.dots = deepcopy(dots)
+        self.init = init
+
+    def isGoal(self, node):
+        return node[1].count() == 0
+
+    def getSuccessors(self, node):
+        successors = []
+        vertex = node[0]
+        dots = node[1]
+        h1 = hash(dots)
+        for direction in vertex.getValidDirections():
+            nextDots = deepcopy(dots)
+            nextNode = nextDots[vertex.shift(direction)]
+            nextDots[nextNode].food = False
+            successors.append(((nextNode, nextDots), direction, 1))
+            #print 'successors', nextNode, nextDots
+        h2 = hash(dots)
+        if h1 != h2:
+            raise ValueError('Dots changed')
+        return successors
+
+    def getStartState(self):
+        return (self.init, self.dots)
+
+class closerDot(object):
+
+    def __init__(self, dots, init):
+        self.dots = deepcopy(dots)
+        self.init = init
+
+    def isGoal(self, node):
+        return node.food
+
+    def getSuccessors(self, node):
+        successors = []
+        for direction in node.getValidDirections():
+            nextNode = self.dots[node.shift(direction)]
+            successors.append((nextNode, direction, 1))
+        return successors
+
+    def getStartState(self):
+        return self.init
