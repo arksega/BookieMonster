@@ -105,10 +105,19 @@ class Vertex(Point):
         'z': 'ud',
     }
 
+    direction_speed = {
+        'n': ('y',  1),
+        's': ('y', -1),
+        'e': ('x',  1),
+        'w': ('x', -1),
+        'u': ('z',  1),
+        'd': ('z', -1),
+    }
+
     directions = ['e', 'w', 'n', 's', 'u', 'd']
 
     def __repr__(self):
-        return 'Vertex' + repr((self.x, self.y, self.z))
+        return 'Vertex' + repr((self.x, self.y, self.z, self.food))
 
     def __str__(self):
         return self.__repr__()
@@ -117,6 +126,7 @@ class Vertex(Point):
         super(Vertex, self).__init__(x, y, z)
         self.n, self.s, self.e, self.w, self.u, self.d = [True] * 6
         self.plane = Point(None, None, None)
+        self.food = True
 
     def disableLimits(self, axis):
         for limit in self.axis_limits[axis]:
@@ -153,6 +163,10 @@ class Vertex(Point):
         for point in points[1:-1]:
             point.disableLimits(axis)
         return points
+
+    def shift(self, direction):
+        axis, shift = self.direction_speed[direction]
+        return self.mask(axis, getattr(self, axis) + shift)
 
 
 class Speed(Point):

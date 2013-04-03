@@ -2,6 +2,8 @@ import pyglet
 import re
 import random
 import os
+import heapq
+import time
 from random import choice
 from copy import copy, deepcopy
 from grid import *
@@ -17,6 +19,21 @@ class _Nodes(dict):
         assert isinstance(item, Point)
         item = Vertex(*item.getAxes())
         return self.setdefault(item, item)
+
+    def __hash__(self):
+        t1 = tuple(self.keys())
+        t2 = [(v, v.food) for v in self.values()]
+        t2 = tuple(t2)
+        return hash((t1, t2))
+
+    def __repr__(self):
+        return str(hash(self))
+
+    def __str__(self):
+        text = ''
+        for value in self.values():
+            text += str(value) + ' '
+        return text
 
 
 class _DictList(dict):
@@ -367,6 +384,11 @@ class Board(object):
             self.badGuys.append(badGuy)
             self.setBadGuyStep(badGuy)
             badGuy.noMoreTarget = self.setBadGuyStep
+        self.allDots = self.map.graph.allDots
+        self.allDots[self.monster.grid].food = False
+        print 'allDots'
+        for x in self.allDots.values():
+            print x, x.getValidDirections()
 
     def getPlaneCorners(self, plane, origin=Point()):
         closerp = plane.node[plane.node.keys()[0]]
@@ -385,7 +407,61 @@ class Board(object):
         return closerp, fartherp
 
     def autoMove(self):
-        print self.monster.grid
+        a = time.time()
+        result = self.breadthFirstSearch()
+        b = time.time()
+        print 'Time: ', b - a
+        self.pause = False
+        self.monster.toggleDrivenMode()
+        for direction in result:
+            self.monster.setDirection(direction)
+
+    def isGoal(self, node):
+        count = 0
+        for dot in node[1]:
+            count += 1 if dot.food else 0
+        return count == 0
+
+    def getSuccessors(self, node):
+        successors = []
+        vertex = node[0]
+        dots = node[1]
+        h1 = hash(dots)
+        for direction in vertex.getValidDirections():
+            nextDots = deepcopy(dots)
+            nextNode = nextDots[vertex.shift(direction)]
+            nextDots[nextNode].food = False
+            successors.append(((nextNode, nextDots), direction, 1))
+            #print 'successors', nextNode, nextDots
+        h2 = hash(dots)
+        if h1 != h2:
+            raise ValueError('Dots changed')
+        return successors
+
+    def breadthFirstSearch(self):
+        closed = set()
+        fringe = PriorityQueue()
+        node = (self.monster.grid, self.allDots)
+        fringe.push(node, 1)
+
+        path = {}
+        path[node] = []
+
+        while True:
+            if fringe.isEmpty():
+                print 'GameOver'
+                print path
+                exit(0)
+                return []
+            node = fringe.pop()
+            if self.isGoal(node):
+                return path[node]
+            if not node in closed:
+                closed.add(node)
+                for childNode in self.getSuccessors(node):
+                    newNode = childNode[0]
+                    path[newNode] = path[node] + [childNode[1]]
+                    fringe.push(newNode, len(path[newNode]))
 
     def updatePlane(self):
         g = self.map.graph
@@ -560,3 +636,21 @@ class Board(object):
                     and distanceZ < minDistanceZ:
                 return object2
         return None
+
+
+class PriorityQueue:
+    def  __init__(self):
+        self.heap = []
+        self.count = 0
+
+    def push(self, item, priority):
+        entry = (priority, self.count, item)
+        heapq.heappush(self.heap, entry)
+        self.count += 1
+
+    def pop(self):
+        (_, _, item) = heapq.heappop(self.heap)
+        return item
+
+    def isEmpty(self):
+        return len(self.heap) == 0

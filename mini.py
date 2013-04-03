@@ -5,7 +5,6 @@ from bm import *
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
-#import pyglet
 pyglet.options['debug_gl'] = False
 from pyglet.gl import *
 
@@ -36,10 +35,10 @@ class MainWindow(QMainWindow):
         toolBar = self.addToolBar('Principal')
         toolBar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         autoicon = QIcon('/usr/share/icons/oxygen/48x48/actions/media-playback-start.png')
-        autoicon.addFile('/usr/share/icons/oxygen/48x48/actions/media-playback-stop.png',mode=2,state=0)
-        auto = QAction(autoicon,'AutoPlay', self)
+        #autoicon.addFile('/usr/share/icons/oxygen/48x48/actions/media-playback-stop.png',mode=2,state=0)
+        auto = QAction(autoicon, 'AutoPlay', self)
         auto.triggered.connect(self.autoToggle)
-        auto.setCheckable(True)
+        #auto.setCheckable(True)
         toolBar.addAction(auto)
 
     def pauseToggle(self):
