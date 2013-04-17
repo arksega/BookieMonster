@@ -354,7 +354,7 @@ class Board(object):
 
     def autoMoveToggle(self):
         if not self.autoPlaying:
-            self.timer.start(1000)
+            self.timer.start(700)
             self.autoPlaying = True
         else:
             self.timer.stop()
@@ -404,6 +404,7 @@ class Board(object):
             badGuy.noMoreTarget = self.setBadGuyStep
         self.allDots = self.map.graph.allDots
         self.allDots[self.monster.grid].food = False
+        self.preState = self.monster.grid
         self.autoPlaying = False
         self.timer.stop()
 
@@ -442,8 +443,10 @@ class Board(object):
         if not problem.isGoal(('', self.allDots)):
             successors = {}
             for successor in problem.getSuccessors((state, self.allDots)):
-                successors[self.heuristic(successor[0], self.allDots)] = successor
+                successors[self.heuristic(successor[0], self.allDots, self.preState)] = successor
+            print 'successors', successors
             nextAction = successors[min(successors.keys())]
+            self.preState = self.monster.grid
             self.monster.setDirection(nextAction[1])
 
     def breadthFirstSearch(self, problem, returnPath=True):
@@ -474,18 +477,24 @@ class Board(object):
                     path[newNode] = path[node] + [childNode[1]]
                     fringe.push(newNode, len(path[newNode]))
 
-    def heuristic(self, state, board):
+    def heuristic(self, state, board, preState):
         #print 'State', state
         vertex, dots = state
         cDots = dots.count()
-        if cDots < board.count():
-            return 0
-        else:
+        h = 0
+        if cDots >= board.count():
             #print 'Cortando', vertex, board
             closerdot = self.breadthFirstSearch(closerDot(board, vertex), False)
             distance = vertex.distance(closerdot)
             #print 'Closer', closerdot, board, vertex
-            return cDots + distance ** 2
+            h = cDots + distance ** 2
+        for bad in self.badGuys:
+            d = bad.grid - vertex
+            if d <= 1:
+                h = cDots*3
+        if vertex == preState:
+            h +=1
+        return h
 
     def aStarSearch(self, problem):
         closed = set()
