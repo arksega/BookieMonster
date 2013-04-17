@@ -35,8 +35,9 @@ class MainWindow(QMainWindow):
         toolBar = self.addToolBar('Principal')
         toolBar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         autoicon = QIcon('/usr/share/icons/oxygen/48x48/actions/media-playback-start.png')
-        #autoicon.addFile('/usr/share/icons/oxygen/48x48/actions/media-playback-stop.png',mode=2,state=0)
+        autoicon.addFile('/usr/share/icons/oxygen/48x48/actions/media-playback-pause.png',mode=2,state=0)
         auto = QAction(autoicon, 'AutoPlay', self)
+        auto.setCheckable(True)
         auto.triggered.connect(self.autoToggle)
         #auto.setCheckable(True)
         toolBar.addAction(auto)
@@ -51,7 +52,9 @@ class MainWindow(QMainWindow):
         self.gl.board.autoMoveToggle()
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_P:
+        if self.gl.board.autoPlaying:
+            pass
+        elif event.key() == Qt.Key_P:
             self.gl.board.label.text = 'Move you to resume'
             self.gl.board.pause = True
         elif event.key() in [Qt.Key_Right, Qt.Key_L, Qt.Key_F]:

@@ -342,6 +342,8 @@ class Board(object):
         self.timer = QTimer()
         self.timer.timeout.connect(self.autoMove)
         self.autoPlaying = False
+        # badness 1 is pure evil
+        self.badness = 2
         self.getMap()
 
         self.active_plane = 'z0'
@@ -354,7 +356,7 @@ class Board(object):
 
     def autoMoveToggle(self):
         if not self.autoPlaying:
-            self.timer.start(700)
+            self.timer.start(100)
             self.autoPlaying = True
         else:
             self.timer.stop()
@@ -406,6 +408,7 @@ class Board(object):
         self.allDots[self.monster.grid].food = False
         self.preState = self.monster.grid
         self.autoPlaying = False
+        self.badSteps = 0
         self.timer.stop()
 
     def getPlaneCorners(self, plane, origin=Point()):
@@ -427,27 +430,26 @@ class Board(object):
         pass
 
     def autoMove(self):
-        a = time.time()
-        problem = allDotsProblem(self.allDots, self.monster.grid)
-        state = self.monster.grid
-        self.pause = False
-        self.monster.drivenMode = True
-        for bad in self.badGuys:
-            bad.stop()
-            bad.noMoreTarget = self.vacuum
-            bad.drivenMode = True
+        if self.monster.isCentered():
+            problem = allDotsProblem(self.allDots, self.monster.grid)
+            state = self.monster.grid
+            self.pause = False
+            self.monster.drivenMode = True
+            for bad in self.badGuys:
+                bad.stop()
+                bad.noMoreTarget = self.vacuum
+                bad.drivenMode = True
+                self.badGuyStepAuto(bad)
+            self.allDots[self.monster.grid].food = False
 
-            self.badGuyStepAuto(bad)
-        self.allDots[self.monster.grid].food = False
-        #for x in range(5):
-        if not problem.isGoal(('', self.allDots)):
-            successors = {}
-            for successor in problem.getSuccessors((state, self.allDots)):
-                successors[self.heuristic(successor[0], self.allDots, self.preState)] = successor
-            print 'successors', successors
-            nextAction = successors[min(successors.keys())]
-            self.preState = self.monster.grid
-            self.monster.setDirection(nextAction[1])
+            if not problem.isGoal(('', self.allDots)):
+                successors = {}
+                for successor in problem.getSuccessors((state, self.allDots)):
+                    successors[self.heuristic(successor[0], self.allDots, self.preState)] = successor
+                print 'successors', successors
+                nextAction = successors[min(successors.keys())]
+                self.preState = self.monster.grid
+                self.monster.setDirection(nextAction[1])
 
     def breadthFirstSearch(self, problem, returnPath=True):
         closed = set()
@@ -594,10 +596,15 @@ class Board(object):
 
     def badGuyStepAuto(self, guy):
         point = self.allDots[guy.grid]
-        print 'Point', point
         actions = point.getValidDirections()
-        print 'Bad actions', actions
-        guy.setDirection(random.choice(actions))
+        if self.badSteps % self.badness == 0:
+            ds = []
+            for action in actions:
+                ds.append((point.shift(action) - self.monster.grid, action))
+            guy.setDirection(min(ds)[1])
+        else:
+            guy.setDirection(random.choice(actions))
+        self.badSteps += 1
 
     def generatePath(self, source, destination):
         edges = deepcopy(self.allrel)
