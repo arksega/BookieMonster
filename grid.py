@@ -210,6 +210,15 @@ class MobileObject(DinamicObj, GridObj):
     pendingAction = None
     connections = None
 
+    direction_speed = {
+        'e': ['x',  1],
+        'w': ['x', -1],
+        'n': ['y',  1],
+        's': ['y', -1],
+        'u': ['z',  1],
+        'd': ['z', -1],
+    }
+
     def __init__(self, vertices, grid=Point(), **kwargs):
         assert isinstance(vertices, dict)
         super(MobileObject, self).__init__(kwargs.pop('model_name'),
@@ -223,6 +232,20 @@ class MobileObject(DinamicObj, GridObj):
         self.updateConnections()
         self.drivenMode = False
         self.movements = []
+
+    def setDirection(self, direction):
+        if self.drivenMode:
+            if not self.isMoving():
+                self.speed.set(*self.direction_speed[direction])
+            else:
+                self.movements.append(self.direction_speed[direction])
+        elif not getattr(self.proxGrid, direction):
+            axis = self.direction_speed[direction][0]
+            val = self.direction_speed[direction][1]
+            if self.speed.axis is None or self.speed.axis == axis:
+                self.speed.set(axis, val)
+            else:
+                self.pendingAction = (axis, val)
 
     def toggleDrivenMode(self):
         self.drivenMode = not self.drivenMode
@@ -328,15 +351,6 @@ class MobileObject(DinamicObj, GridObj):
 
 class HumanObject(MobileObject):
 
-    direction_speed = {
-        'e': ['x',  1],
-        'w': ['x', -1],
-        'n': ['y',  1],
-        's': ['y', -1],
-        'u': ['z',  1],
-        'd': ['z', -1],
-    }
-
     def __init__(self, vertices, grid=Point(), **kwargs):
         super(HumanObject, self).__init__(vertices, grid, **kwargs)
         self.onProxGridChange = Event()
@@ -350,20 +364,6 @@ class HumanObject(MobileObject):
     def verifySpeed(self):
         if self.speed.direction and getattr(self.grid, self.speed.direction):
             self.stop()
-
-    def setDirection(self, direction):
-        if self.drivenMode:
-            if not self.isMoving():
-                self.speed.set(*self.direction_speed[direction])
-            else:
-                self.movements.append(self.direction_speed[direction])
-        elif not getattr(self.proxGrid, direction):
-            axis = self.direction_speed[direction][0]
-            val = self.direction_speed[direction][1]
-            if self.speed.axis is None or self.speed.axis == axis:
-                self.speed.set(axis, val)
-            else:
-                self.pendingAction = (axis, val)
 
     def updateProxGrid(self, grid):
         super(HumanObject, self).updateProxGrid(grid)

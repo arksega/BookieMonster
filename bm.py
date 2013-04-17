@@ -339,6 +339,9 @@ class Board(object):
         self.eaten_books = 0
         self.first_update = True
 
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.autoMove)
+        self.autoPlaying = False
         self.getMap()
 
         self.active_plane = 'z0'
@@ -347,6 +350,15 @@ class Board(object):
         self.pick = self.loadSound('data/sound/get.wav')
         self.win = self.loadSound('data/sound/win.wav')
         self.go = self.loadSound('data/sound/game-over.wav')
+
+
+    def autoMoveToggle(self):
+        if not self.autoPlaying:
+            self.timer.start(1000)
+            self.autoPlaying = True
+        else:
+            self.timer.stop()
+            self.autoPlaying = False
 
     def loadSound(self, source):
         return Phonon.createPlayer(
@@ -392,6 +404,8 @@ class Board(object):
             badGuy.noMoreTarget = self.setBadGuyStep
         self.allDots = self.map.graph.allDots
         self.allDots[self.monster.grid].food = False
+        self.autoPlaying = False
+        self.timer.stop()
 
     def getPlaneCorners(self, plane, origin=Point()):
         closerp = plane.node[plane.node.keys()[0]]
@@ -408,16 +422,29 @@ class Board(object):
                 fartherp = node
         return closerp, fartherp
 
+    def vacuum(self, *arg):
+        pass
+
     def autoMove(self):
         a = time.time()
-        result = self.aStarSearch(allDotsProblem(self.allDots, self.monster.grid))
-        b = time.time()
-        print 'Time: ', b - a
-        print 'Stemps:', len(result)
+        problem = allDotsProblem(self.allDots, self.monster.grid)
+        state = self.monster.grid
         self.pause = False
-        self.monster.toggleDrivenMode()
-        for direction in result:
-            self.monster.setDirection(direction)
+        self.monster.drivenMode = True
+        for bad in self.badGuys:
+            bad.stop()
+            bad.noMoreTarget = self.vacuum
+            bad.drivenMode = True
+
+            self.badGuyStepAuto(bad)
+        self.allDots[self.monster.grid].food = False
+        #for x in range(5):
+        if not problem.isGoal(('', self.allDots)):
+            successors = {}
+            for successor in problem.getSuccessors((state, self.allDots)):
+                successors[self.heuristic(successor[0], self.allDots)] = successor
+            nextAction = successors[min(successors.keys())]
+            self.monster.setDirection(nextAction[1])
 
     def breadthFirstSearch(self, problem, returnPath=True):
         closed = set()
@@ -556,6 +583,13 @@ class Board(object):
         else:
             guy.stop()
 
+    def badGuyStepAuto(self, guy):
+        point = self.allDots[guy.grid]
+        print 'Point', point
+        actions = point.getValidDirections()
+        print 'Bad actions', actions
+        guy.setDirection(random.choice(actions))
+
     def generatePath(self, source, destination):
         edges = deepcopy(self.allrel)
         print edges
@@ -602,6 +636,7 @@ class Board(object):
             if badguy is not None:
                 self.pause = True
                 self.over = True
+                self.timer.stop()
                 self.label.text = 'GAME OVER'
                 self.label.color = (255, 0, 0, 255)
                 self.go.play()
@@ -617,6 +652,7 @@ class Board(object):
                 self.label.text = 'Game completed'
             else:
                 self.label.text = 'Winner!!'
+                self.timer.stop()
                 QTimer.singleShot(2000, self.getMap)
             self.pause = True
             self.win.play()

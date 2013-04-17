@@ -48,7 +48,7 @@ class MainWindow(QMainWindow):
         self.gl.fade = not self.gl.fade
 
     def autoToggle(self):
-        self.gl.board.autoMove()
+        self.gl.board.autoMoveToggle()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_P:
