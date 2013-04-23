@@ -3,7 +3,7 @@ import re
 import random
 import os
 import heapq
-import time
+from operator import eq, ne
 from random import choice
 from copy import copy, deepcopy
 from grid import *
@@ -343,7 +343,13 @@ class Board(object):
         self.timer.timeout.connect(self.autoMove)
         self.autoPlaying = False
         # badness 1 is pure evil
-        self.badness = 2
+        self.difficuly = {
+            'easy': (6, eq),
+            'normal': (3, ne),
+            'hard': (1, eq)
+            }
+        self.level = 'easy'
+
         self.getMap()
 
         self.active_plane = 'z0'
@@ -484,6 +490,7 @@ class Board(object):
         vertex, dots = state
         cDots = dots.count()
         h = 0
+        distance = 0
         if cDots >= board.count():
             #print 'Cortando', vertex, board
             closerdot = self.breadthFirstSearch(closerDot(board, vertex), False)
@@ -493,9 +500,9 @@ class Board(object):
         for bad in self.badGuys:
             d = bad.grid - vertex
             if d <= 1:
-                h = cDots*3
+                h = cDots * 3
         if vertex == preState:
-            h +=1
+            h += 1
         return h
 
     def aStarSearch(self, problem):
@@ -582,7 +589,6 @@ class Board(object):
         '''normal'''
         if guy.grid != self.monster.grid:
             print 'Points2', guy.origin, self.monster.origin, self.monster
-            vertices = copy(guy.connections)
             path = self.generatePath(guy.origin, copy(self.monster.origin))
             print 'Path1:', path
             target = self.monster.target
@@ -597,13 +603,18 @@ class Board(object):
     def badGuyStepAuto(self, guy):
         point = self.allDots[guy.grid]
         actions = point.getValidDirections()
-        if self.badSteps % self.badness == 0:
+        badness, op = self.difficuly[self.level]
+        if op(self.badSteps % badness, 0):
             ds = []
             for action in actions:
                 ds.append((point.shift(action) - self.monster.grid, action))
             guy.setDirection(min(ds)[1])
         else:
-            guy.setDirection(random.choice(actions))
+            if hasattr(guy, 'prd') and guy.prd in actions:
+                guy.setDirection(guy.prd)
+            else:
+                guy.prd = random.choice(actions)
+                guy.setDirection(guy.prd)
         self.badSteps += 1
 
     def generatePath(self, source, destination):

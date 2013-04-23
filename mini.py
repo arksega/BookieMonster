@@ -25,6 +25,7 @@ class MainWindow(QMainWindow):
         self.fade.setChecked(True)
         self.fade.clicked.connect(self.fadeToggle)
         self.gl = GLWidget()
+
         gp = QGridLayout()
         #gp.addWidget(self.pause, 1, 0)
         #gp.addWidget(self.fade, 1, 1)
@@ -39,8 +40,22 @@ class MainWindow(QMainWindow):
         auto = QAction(autoicon, 'AutoPlay', self)
         auto.setCheckable(True)
         auto.triggered.connect(self.autoToggle)
-        #auto.setCheckable(True)
         toolBar.addAction(auto)
+        easy = QRadioButton('Facil')
+        easy.clicked.connect(self.changerDificult('easy'))
+        easy.setChecked(True)
+        normal = QRadioButton('Normal')
+        normal.clicked.connect(self.changerDificult('normal'))
+        hard = QRadioButton('Dificil')
+        hard.clicked.connect(self.changerDificult('hard'))
+        toolBar.addWidget(easy)
+        toolBar.addWidget(normal)
+        toolBar.addWidget(hard)
+
+    def changerDificult(self, level):
+        def setDificult():
+            self.gl.board.level = level
+        return setDificult
 
     def pauseToggle(self):
         self.gl.pause = not self.gl.pause
