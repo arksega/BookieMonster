@@ -375,11 +375,21 @@ class Board(object):
         )
 
     def getMap(self, *args):
-        currentmap = self.maps.pop(0)
+        self.currentmap = self.maps.pop(0)
+        self.initMap(self.currentmap)
+
+    def reloadMap(self):
+        self.initMap(self.currentmap)
+
+    def initMap(self, currentmap):
         self.map = Map3D(self.batch, self.loadMap(currentmap))
         self.walls = []
         self.pause = True
+        self.first_update = True
         self.over = False
+        self.eaten_books = 0
+        self.total_books = 0
+        self.label.color = (0, 255, 255, 255)
         for plane in self.map.graph.get_planes():
             self.walls += plane.walls
             self.total_books += len(plane.books)

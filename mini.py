@@ -97,6 +97,8 @@ class MainWindow(QMainWindow):
             self.gl.board.monster.setDirection('d')
         elif event.key() == Qt.Key_X:
             self.gl.board.monster.toggleDrivenMode()
+        elif event.key() == Qt.Key_R:
+            self.gl.board.reloadMap()
         elif event.key() == Qt.Key_F1:
             self.helpDialog.show()
             self.gl.board.label.text = 'Move you to resume'
