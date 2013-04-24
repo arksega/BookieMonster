@@ -51,6 +51,11 @@ class MainWindow(QMainWindow):
         toolBar.addWidget(easy)
         toolBar.addWidget(normal)
         toolBar.addWidget(hard)
+        self.helpDialog = QDialog(self)
+        helpLay = QGridLayout(self.helpDialog)
+        image = QLabel()
+        image.setPixmap(QPixmap('data/images/instructions.png'))
+        helpLay.addWidget(image)
 
     def changerDificult(self, level):
         def setDificult():
@@ -92,6 +97,10 @@ class MainWindow(QMainWindow):
             self.gl.board.monster.setDirection('d')
         elif event.key() == Qt.Key_X:
             self.gl.board.monster.toggleDrivenMode()
+        elif event.key() == Qt.Key_F1:
+            self.helpDialog.show()
+            self.gl.board.label.text = 'Move you to resume'
+            self.gl.board.pause = True
 
 
 class GLWidget(QGLWidget):
