@@ -37,10 +37,7 @@ class Importer(Object3D):
         self.scale = scale
         self.load_file(model_name)
         self.model_name = model_name
-
-    def __del__(self):
-        if hasattr(self, 'vtx_list'):
-            self.vtx_list.delete()
+        self.rx, self.ry, self.rz, self.degrees = (0.0,) * 4
 
     def load_file(self, model_name):
         self.vertices = []
@@ -91,7 +88,9 @@ class DinamicObj(Importer):
     def draw_faces(self):
         glPushMatrix()
         glTranslatef(self.x, self.y, self.z)
+        glRotatef(self.degrees, self.rx, self.ry, self.rz)
         glScalef(self.scale, self.height, self.thickness)
+
         if self.has_materials:
             for key in self.batchs:
                 if self.apply_materials:
@@ -197,7 +196,7 @@ class GridObj(object):
         return pos
 
 
-class StaticObject(StaticObj, GridObj):
+class StaticObject(DinamicObj, GridObj):
 
     def __init__(self, grid=Point(), **kwargs):
         super(StaticObject, self).__init__(kwargs.pop('model_name'),
@@ -219,6 +218,15 @@ class MobileObject(DinamicObj, GridObj):
         'd': ['z', -1],
     }
 
+    direction_rotation = {
+        'e': (90, 0, 0, 1),
+        'w': (-90, 0, 0, 1),
+        'n': (180, 0, 0, 1),
+        's': (0, 0, 0, 1),
+        'u': (-90, 1, 0, 0),
+        'd': (90, 1, 0, 0),
+    }
+
     def __init__(self, vertices, grid=Point(), **kwargs):
         assert isinstance(vertices, dict)
         super(MobileObject, self).__init__(kwargs.pop('model_name'),
@@ -234,6 +242,7 @@ class MobileObject(DinamicObj, GridObj):
         self.movements = []
 
     def setDirection(self, direction):
+        self.degrees, self.rx, self.ry, self.rz = self.direction_rotation[direction]
         if self.drivenMode:
             if not self.isMoving():
                 self.speed.set(*self.direction_speed[direction])

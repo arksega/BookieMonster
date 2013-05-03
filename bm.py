@@ -292,13 +292,13 @@ class Map3D(Config):
             currentBook = copy(self.originalBook)
             currentBook.setAxes(Point(*currentBook.translatePos(point)))
             currentBook.color = color
-            currentBook.activate()
+            #currentBook.activate()
             books.append(currentBook)
         return books
 
     def generate(self):
         self.originalBox = Box(1, 1, 1)
-        self.originalBook = StaticObject(model_name='sphere', scale=4)
+        self.originalBook = StaticObject(model_name='book', scale=4)
         for plane in self.graph.plane.values():
             if plane.axis == 'z':
                 color_limit = (0.0, 0.0, 1.0, 1.0)
@@ -393,12 +393,12 @@ class Board(object):
         for plane in self.map.graph.get_planes():
             self.walls += plane.walls
             self.total_books += len(plane.books)
-            self.set_plane_opacity(plane, 0.1)
+            #self.set_plane_opacity(plane, 0.1)
         self.allrel = self.map.graph.get_all_relations()
-        self.set_plane_opacity(self.map.graph.plane['z0'], 1.0)
+        #self.set_plane_opacity(self.map.graph.plane['z0'], 1.0)
         monsterp, fartherp = self.getPlaneCorners(self.map.graph.plane['z0'])
         self.monster = HumanObject(
-                self.allrel, monsterp, model_name='sphere', scale=self.size,
+                self.allrel, monsterp, model_name='monsterSimple', scale=self.size/2,
                 color=(1.0, 0.0, 0.1, 1.0))
         self.monster.speed.onChange += self.resetBadGuysStep
         #self.monster.onProxGridChange += self.updatePlane
@@ -709,11 +709,11 @@ class Board(object):
                 wall.vtx_list.draw(GL_TRIANGLES)
             glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.1, 0.1, 0.0, 1.0))
             for book in self.map.graph.plane[plane].books:
-                book.vtx_list.draw(GL_TRIANGLES)
+                book.draw_faces()
 
         #self.batch.draw()
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.0, 1.0, 1.0))
-        self.monster.apply_materials = False
+        #glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.0, 1.0, 1.0))
+        #self.monster.apply_materials = False
         self.monster.draw_faces()
         [guy.draw_faces() for guy in self.badGuys]
 

@@ -5,8 +5,8 @@ from bm import *
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
-pyglet.options['debug_gl'] = False
-from pyglet.gl import *
+
+from OpenGL.raw import GL
 
 
 def vec(*args):
@@ -137,13 +137,13 @@ class GLWidget(QGLWidget):
     def initializeGL(self):
         glDisable(GL_TEXTURE_2D)
         glDisable(GL_COLOR_MATERIAL)
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        '''glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)'''
         glEnable(GL_DEPTH_TEST)
         glClearColor(1, 1, 1, 1)
-        glEnable(GL_POLYGON_SMOOTH)
+        '''glEnable(GL_POLYGON_SMOOTH)
         glShadeModel(GL_SMOOTH)
-        glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE)
+        glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE)'''
         # Load models
         self.board = Board()
         # Materials
