@@ -44,7 +44,7 @@ class GLWidget(QGLWidget):
         self.timer.start(33)
         self.x = -200
         self.y = -200
-        self.z = 200
+        self.z = 0
         self.mouseX = 0
         self.mouseY = 0
         self.dx = -45
@@ -75,12 +75,12 @@ class GLWidget(QGLWidget):
         # Materials
         glMaterialfv(GL_FRONT, GL_SHININESS, vec(5.0))
         # Light zone
-        glLightfv(GL_LIGHT0, GL_AMBIENT, vec(100.0, 10.0, 10.0, 10.0))
-        glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(10.0, 10.0, 10.0, 10.0))
+        glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(100.0, 100.0, 100.0, 10.0))
         glLightfv(GL_LIGHT0, GL_POSITION, vec(-300, -300, 0.0, 0))
-        glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, vec(0.5, 0.5, 0.0))
-        glLightfv(GL_LIGHT0, GL_SPECULAR, vec(0.5, 0.5, 0.5, 1.0))
         glEnable(GL_LIGHT0)
+        glLightfv(GL_LIGHT1, GL_DIFFUSE, vec(100.0, 100.0, 100.0, 10.0))
+        glLightfv(GL_LIGHT1, GL_POSITION, vec(300, 300, 0.0, 0))
+        glEnable(GL_LIGHT1)
 
     def resizeGL(self, w, h):
         glViewport(0, 0, w, h)
@@ -92,11 +92,6 @@ class GLWidget(QGLWidget):
         glLoadIdentity()
         gluPerspective(45., w / float(h), 1.0, 1000.0)
         gluLookAt(self.x, self.y, self.z, 0, 0, 0, 0, 0, 1)
-        '''vx = math.sin(math.radians(self.dx -45))
-        vy = math.cos(math.radians(self.dx -45))
-        glRotatef(self.dy, vx, vy, 0)
-        print (vx,vy, self.dx, self.dy)
-        glRotatef(self.dx, 0, 0, 1)'''
         glRotatef(self.dx, 0, 0, 1)
         vx = math.sin(math.radians(self.dx -45))
         vy = math.cos(math.radians(self.dx -45))
@@ -126,10 +121,8 @@ class GLWidget(QGLWidget):
         dy = self.mouseY - event.y()
         self.mouseX = event.x()
         self.mouseY = event.y()
-        if self.changeX:
-            self.dx -= dx
-        else:
-            self.dy -= dy
+        self.dx -= dx
+        self.dy += dy
 
     def mousePressEvent(self, event):
         self.mouseX = event.x()
