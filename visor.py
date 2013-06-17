@@ -1,7 +1,7 @@
 #!/bin/python3
 import sys
-import math
 import cmath
+from math import cos, sin, tan, radians
 from grid import *
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -21,18 +21,15 @@ class MainWindow(QMainWindow):
         self.gl = GLWidget()
 
         gp = QGridLayout()
-        #gp.addWidget(self.pause, 1, 0)
-        #gp.addWidget(self.fade, 1, 1)
         gp.addWidget(self.gl, 0, 0, 1, 2)
         self.frame = QWidget()
         self.frame.setLayout(gp)
         self.setCentralWidget(self.frame)
 
-    def keyPressEvent(self, event):
-        print event
-        if event.key() == Qt.Key_X:
-            self.gl.changeX = not self.gl.changeX
-            print self.gl.changeX
+    def wheelEvent(self, event):
+        scroll = event.delta() / 33
+        if self.gl.x  + scroll < -30:
+            self.gl.x += scroll
 
 
 class GLWidget(QGLWidget):
@@ -42,14 +39,9 @@ class GLWidget(QGLWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.updateGL)
         self.timer.start(33)
-        self.x = -200
-        self.y = -200
-        self.z = 0
-        self.mouseX = 0
-        self.mouseY = 0
-        self.dx = -45
+        self.x = -300
+        self.dx = -90
         self.dy = 0
-        self.changeX = True
 
     def draw(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -62,13 +54,8 @@ class GLWidget(QGLWidget):
     def initializeGL(self):
         glDisable(GL_TEXTURE_2D)
         glDisable(GL_COLOR_MATERIAL)
-        '''glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)'''
         glEnable(GL_DEPTH_TEST)
         glClearColor(0.2, 0.2, 0.2, 1)
-        '''glEnable(GL_POLYGON_SMOOTH)
-        glShadeModel(GL_SMOOTH)
-        glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE)'''
         # Load models
         self.model = StaticObject(model_name='monkeyMat', scale=30)
         self.model2 = StaticObject(model_name='book', grid=Point(2,2,2), scale=30)
@@ -91,12 +78,11 @@ class GLWidget(QGLWidget):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(45., w / float(h), 1.0, 1000.0)
-        gluLookAt(self.x, self.y, self.z, 0, 0, 0, 0, 0, 1)
+        gluLookAt(self.x, 0, 0, 0, 0, 0, 0, 0, 1)
         glRotatef(self.dx, 0, 0, 1)
-        vx = math.sin(math.radians(self.dx -45))
-        vy = math.cos(math.radians(self.dx -45))
+        vx = sin(radians(self.dx ))
+        vy = cos(radians(self.dx ))
         glRotatef(self.dy, vx, vy, 0)
-        print (vx,vy, self.dx, self.dy)
 
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
