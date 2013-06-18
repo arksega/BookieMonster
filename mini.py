@@ -1,12 +1,10 @@
 #!/bin/python3
 import sys
-from grid import *
 from bm import *
-from PyQt4.QtCore import *
+from grid import *
 from PyQt4.QtGui import *
+from PyQt4.QtCore import *
 from PyQt4.QtOpenGL import *
-
-from OpenGL.raw import GL
 
 
 def vec(*args):
@@ -17,26 +15,20 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
-        self.pause = QPushButton('Pausar')
-        self.pause.setCheckable(True)
-        self.pause.clicked.connect(self.pauseToggle)
-        self.fade = QPushButton('Decolorar')
-        self.fade.setCheckable(True)
-        self.fade.setChecked(True)
-        self.fade.clicked.connect(self.fadeToggle)
         self.gl = GLWidget()
 
         gp = QGridLayout()
-        #gp.addWidget(self.pause, 1, 0)
-        #gp.addWidget(self.fade, 1, 1)
         gp.addWidget(self.gl, 0, 0, 1, 2)
         self.frame = QWidget()
         self.frame.setLayout(gp)
         self.setCentralWidget(self.frame)
         toolBar = self.addToolBar('Principal')
         toolBar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        autoicon = QIcon('/usr/share/icons/oxygen/48x48/actions/media-playback-start.png')
-        autoicon.addFile('/usr/share/icons/oxygen/48x48/actions/media-playback-pause.png',mode=2,state=0)
+        autoicon = QIcon(
+            '/usr/share/icons/oxygen/48x48/actions/media-playback-start.png')
+        autoicon.addFile(
+            '/usr/share/icons/oxygen/48x48/actions/media-playback-pause.png',
+            mode=2, state=0)
 
         auto = QAction(autoicon, 'AutoPlay', self)
         auto.setCheckable(True)
@@ -74,12 +66,6 @@ class MainWindow(QMainWindow):
         def setDificult():
             self.gl.board.level = level
         return setDificult
-
-    def pauseToggle(self):
-        self.gl.pause = not self.gl.pause
-
-    def fadeToggle(self):
-        self.gl.fade = not self.gl.fade
 
     def autoToggle(self):
         self.gl.board.autoMoveToggle()
@@ -137,13 +123,8 @@ class GLWidget(QGLWidget):
     def initializeGL(self):
         glDisable(GL_TEXTURE_2D)
         glDisable(GL_COLOR_MATERIAL)
-        '''glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)'''
         glEnable(GL_DEPTH_TEST)
         glClearColor(1, 1, 1, 1)
-        '''glEnable(GL_POLYGON_SMOOTH)
-        glShadeModel(GL_SMOOTH)
-        glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE)'''
         # Load models
         self.board = Board()
         # Materials
