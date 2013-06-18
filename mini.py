@@ -5,6 +5,7 @@ from grid import *
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 from PyQt4.QtOpenGL import *
+from math import cos, sin, radians
 
 
 def vec(*args):
@@ -75,6 +76,8 @@ class MainWindow(QMainWindow):
             self.gl.board.reloadMap()
         elif self.gl.board.autoPlaying:
             pass
+        elif event.key() == Qt.Key_V:
+            self.gl.resetView()
         elif event.key() == Qt.Key_P:
             self.gl.board.label.text = 'Move you to resume'
             self.gl.board.pause = True
@@ -111,6 +114,12 @@ class GLWidget(QGLWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(self.updateGL)
         self.timer.start(33)
+        self.resetView()
+
+    def resetView(self):
+        self.distance = -300
+        self.dx = -45
+        self.dy = -45
 
     def draw(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -147,7 +156,12 @@ class GLWidget(QGLWidget):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(45., w / float(h), 1.0, 1000.0)
-        gluLookAt(-200, -200, 200, 0, 0, 0, 0, 0, 1)
+        gluLookAt(self.distance, 0, 0, 0, 0, 0, 0, 0, 1)
+        glRotatef(self.dx, 0, 0, 1)
+        vx = sin(radians(self.dx))
+        vy = cos(radians(self.dx))
+        glRotatef(self.dy, vx, vy, 0)
+
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         glEnable(GL_LIGHTING)
@@ -172,7 +186,21 @@ class GLWidget(QGLWidget):
         print (event)
 
     def mouseMoveEvent(self, event):
-            print(("{0}, {1}".format(event.x(), event.y())))
+        dx = self.mouseX - event.x()
+        dy = self.mouseY - event.y()
+        self.mouseX = event.x()
+        self.mouseY = event.y()
+        self.dx -= dx
+        self.dy += dy
+
+    def mousePressEvent(self, event):
+        self.mouseX = event.x()
+        self.mouseY = event.y()
+
+    def wheelEvent(self, event):
+        scroll = event.delta() / 33
+        if self.distance + scroll < -30:
+            self.distance += scroll
 
     def draw_2D(self):
         self.board.draw_2D()
