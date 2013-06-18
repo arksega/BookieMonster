@@ -19,12 +19,19 @@ class MainWindow(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
         self.gl = GLWidget()
+        self.model = QComboBox()
+        self.model.addItems(['monkeyMat', 'book', 'box', 'monsterSimple'])
+        self.model.currentIndexChanged.connect(self.setModel)
 
         gp = QGridLayout()
-        gp.addWidget(self.gl, 0, 0, 1, 2)
+        gp.addWidget(self.model, 0,0)
+        gp.addWidget(self.gl, 1, 0)
         self.frame = QWidget()
         self.frame.setLayout(gp)
         self.setCentralWidget(self.frame)
+
+    def setModel(self):
+        self.gl.model = StaticObject(model_name=self.model.currentText(), scale=30)
 
     def wheelEvent(self, event):
         scroll = event.delta() / 33
@@ -58,7 +65,6 @@ class GLWidget(QGLWidget):
         glClearColor(0.2, 0.2, 0.2, 1)
         # Load models
         self.model = StaticObject(model_name='monkeyMat', scale=30)
-        self.model2 = StaticObject(model_name='book', grid=Point(2,2,2), scale=30)
         # Materials
         glMaterialfv(GL_FRONT, GL_SHININESS, vec(5.0))
         # Light zone
@@ -119,7 +125,6 @@ class GLWidget(QGLWidget):
 
     def draw_3D(self):
         self.model.draw_faces()
-        self.model2.draw_faces()
         glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.1, 0.0, 1.0))
         pass
 
