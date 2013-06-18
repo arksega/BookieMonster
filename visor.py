@@ -33,11 +33,6 @@ class MainWindow(QMainWindow):
     def setModel(self):
         self.gl.model = StaticObject(model_name=self.model.currentText(), scale=30)
 
-    def wheelEvent(self, event):
-        scroll = event.delta() / 33
-        if self.gl.x  + scroll < -30:
-            self.gl.x += scroll
-
 
 class GLWidget(QGLWidget):
 
@@ -119,6 +114,11 @@ class GLWidget(QGLWidget):
     def mousePressEvent(self, event):
         self.mouseX = event.x()
         self.mouseY = event.y()
+
+    def wheelEvent(self, event):
+        scroll = event.delta() / 33
+        if self.x  + scroll < -30:
+            self.x += scroll
 
     def draw_2D(self):
         pass
