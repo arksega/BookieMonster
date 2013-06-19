@@ -74,6 +74,14 @@ class MainWindow(QMainWindow):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_R:
             self.gl.board.reloadMap()
+        elif event.key() == Qt.Key_T:
+            self.gl.track = not self.gl.track
+            if self.gl.track:
+                self.gl.dx = -45
+                self.gl.dy = -45
+                self.gl.distance = -50
+            else:
+                self.gl.distance = -300
         elif self.gl.board.autoPlaying:
             pass
         elif event.key() == Qt.Key_V:
@@ -115,6 +123,7 @@ class GLWidget(QGLWidget):
         self.timer.timeout.connect(self.updateGL)
         self.timer.start(33)
         self.resetView()
+        self.track = False
 
     def resetView(self):
         self.distance = -300
@@ -156,11 +165,21 @@ class GLWidget(QGLWidget):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(45., w / float(h), 1.0, 1000.0)
-        gluLookAt(self.distance, 0, 0, 0, 0, 0, 0, 0, 1)
-        glRotatef(self.dx, 0, 0, 1)
-        vx = sin(radians(self.dx))
-        vy = cos(radians(self.dx))
-        glRotatef(self.dy, vx, vy, 0)
+        if not self.track:
+            gluLookAt(self.distance, 0, 0, 0, 0, 0, 0, 0, 1)
+            glRotatef(self.dx, 0, 0, 1)
+            vx = sin(radians(self.dx))
+            vy = cos(radians(self.dx))
+            glRotatef(self.dy, vx, vy, 0)
+        else:
+            gluLookAt(
+                    self.distance + self.board.monster.x,
+                    self.distance + self.board.monster.y,
+                    self.board.monster.z - self.distance,
+                    self.board.monster.x,
+                    self.board.monster.y,
+                    self.board.monster.z,
+                    0, 0, 1)
 
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -180,27 +199,25 @@ class GLWidget(QGLWidget):
 
     def paintGL(self):
         self.draw()
-        pass
-
-    def keyPressEvent(self, event):
-        print (event)
 
     def mouseMoveEvent(self, event):
-        dx = self.mouseX - event.x()
-        dy = self.mouseY - event.y()
-        self.mouseX = event.x()
-        self.mouseY = event.y()
-        self.dx -= dx
-        self.dy += dy
+        if not self.track:
+            dx = self.mouseX - event.x()
+            dy = self.mouseY - event.y()
+            self.mouseX = event.x()
+            self.mouseY = event.y()
+            self.dx -= dx
+            self.dy += dy
 
     def mousePressEvent(self, event):
         self.mouseX = event.x()
         self.mouseY = event.y()
 
     def wheelEvent(self, event):
-        scroll = event.delta() / 33
-        if self.distance + scroll < -30:
-            self.distance += scroll
+        if not self.track:
+            scroll = event.delta() / 33
+            if self.distance + scroll < -30:
+                self.distance += scroll
 
     def draw_2D(self):
         self.board.draw_2D()
@@ -208,7 +225,6 @@ class GLWidget(QGLWidget):
     def draw_3D(self):
         self.board.draw_3D()
         glMaterialfv(GL_FRONT, GL_DIFFUSE, vec(0.0, 0.1, 0.0, 1.0))
-        pass
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
