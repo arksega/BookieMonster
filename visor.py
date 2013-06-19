@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         QMainWindow.__init__(self, parent)
         self.gl = GLWidget()
         self.model = QComboBox()
-        self.model.addItems(['monkeyMat', 'book', 'box', 'monsterSimple'])
+        self.model.addItems(['bad', 'book', 'box', 'monkeyMat', 'monsterSimple'])
         self.model.currentIndexChanged.connect(self.setModel)
 
         gp = QGridLayout()
@@ -59,7 +59,7 @@ class GLWidget(QGLWidget):
         glEnable(GL_DEPTH_TEST)
         glClearColor(0.2, 0.2, 0.2, 1)
         # Load models
-        self.model = StaticObject(model_name='monkeyMat', scale=30)
+        self.model = StaticObject(model_name='bad', scale=30)
         # Materials
         glMaterialfv(GL_FRONT, GL_SHININESS, vec(5.0))
         # Light zone
