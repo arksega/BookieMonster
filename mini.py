@@ -146,12 +146,14 @@ class GLWidget(QGLWidget):
         # Materials
         glMaterialfv(GL_FRONT, GL_SHININESS, vec(1.0))
         # Light zone
-        glLightfv(GL_LIGHT0, GL_AMBIENT, vec(1.0, 1.0, 1.0, 0))
         glLightfv(GL_LIGHT0, GL_DIFFUSE, vec(10.0, 10.0, 10.0, 0))
         glLightfv(GL_LIGHT0, GL_POSITION, vec(-100, -100, 50.0, 0))
         glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, vec(0.5, 0.5, 0.0))
-        glLightfv(GL_LIGHT0, GL_SPECULAR, vec(0.5, 0.5, 0.5, 0.5))
         glEnable(GL_LIGHT0)
+        glLightfv(GL_LIGHT1, GL_DIFFUSE, vec(10.0, 10.0, 10.0, 0))
+        glLightfv(GL_LIGHT1, GL_POSITION, vec(100, 100, -50.0, 0))
+        glLightfv(GL_LIGHT1, GL_SPOT_DIRECTION, vec(-0.5, -0.5, 0.0))
+        glEnable(GL_LIGHT1)
 
     def resizeGL(self, w, h):
         glViewport(0, 0, w, h)
