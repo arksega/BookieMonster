@@ -217,6 +217,7 @@ class GLWidget(QGLWidget):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setApplicationName('Mini')
     window = MainWindow()
     window.show()
     window.resize(800, 800)
