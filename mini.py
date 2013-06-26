@@ -77,8 +77,6 @@ class MainWindow(QMainWindow):
         elif event.key() == Qt.Key_T:
             self.gl.track = not self.gl.track
             if self.gl.track:
-                self.gl.dx = -45
-                self.gl.dy = -45
                 self.gl.distance = -50
             else:
                 self.gl.distance = -300
@@ -165,21 +163,14 @@ class GLWidget(QGLWidget):
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
         gluPerspective(45., w / float(h), 1.0, 1000.0)
-        if not self.track:
-            gluLookAt(self.distance, 0, 0, 0, 0, 0, 0, 0, 1)
-            glRotatef(self.dx, 0, 0, 1)
-            vx = sin(radians(self.dx))
-            vy = cos(radians(self.dx))
-            glRotatef(self.dy, vx, vy, 0)
-        else:
-            gluLookAt(
-                    self.distance + self.board.monster.x,
-                    self.distance + self.board.monster.y,
-                    self.board.monster.z - self.distance,
-                    self.board.monster.x,
-                    self.board.monster.y,
-                    self.board.monster.z,
-                    0, 0, 1)
+        gluLookAt(self.distance, 0, 0, 0, 0, 0, 0, 0, 1)
+        glRotatef(self.dx, 0, 0, 1)
+        vx = sin(radians(self.dx))
+        vy = cos(radians(self.dx))
+        glRotatef(self.dy, vx, vy, 0)
+        data = [-1 * getattr(self.board.monster, axis) for axis in Point.axes]
+        if self.track:
+            glTranslatef(*data)
 
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
@@ -201,23 +192,21 @@ class GLWidget(QGLWidget):
         self.draw()
 
     def mouseMoveEvent(self, event):
-        if not self.track:
-            dx = self.mouseX - event.x()
-            dy = self.mouseY - event.y()
-            self.mouseX = event.x()
-            self.mouseY = event.y()
-            self.dx -= dx
-            self.dy += dy
+        dx = self.mouseX - event.x()
+        dy = self.mouseY - event.y()
+        self.mouseX = event.x()
+        self.mouseY = event.y()
+        self.dx -= dx
+        self.dy += dy
 
     def mousePressEvent(self, event):
         self.mouseX = event.x()
         self.mouseY = event.y()
 
     def wheelEvent(self, event):
-        if not self.track:
-            scroll = event.delta() / 33
-            if self.distance + scroll < -30:
-                self.distance += scroll
+        scroll = event.delta() / 33
+        if self.distance + scroll < -30:
+            self.distance += scroll
 
     def draw_2D(self):
         self.board.draw_2D()
